@@ -1,8 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Cloud, MapPin, Droplets, Wind, Sun, Loader2, Navigation,
-  CloudRain, CloudSnow, Zap, Globe, Moon, LocateFixed,
-  AlertTriangle, RefreshCcw
+  Cloud,
+  MapPin,
+  Droplets,
+  Wind,
+  Sun,
+  Loader2,
+  Navigation,
+  CloudRain,
+  CloudSnow,
+  Zap,
+  Globe,
+  Moon,
+  LocateFixed,
+  AlertTriangle,
+  RefreshCcw
 } from "lucide-react";
 
 const BELGIAN_CITIES = [
@@ -21,6 +33,13 @@ const TRANSLATIONS = {
     title: "Météo IA Belgique",
     subtitle: "Prévisions intelligentes optimisées pour la Belgique",
     chooseCity: "Choisir une ville :",
+    postalTitle: "Recherche par code postal",
+    postalPlaceholder: "Ex: 4450",
+    postalHint: "Tape 4 chiffres, puis choisis une localité (village).",
+    postalSearching: "Recherche…",
+    postalNoResults: "Aucun résultat pour ce code postal.",
+    postalError: "Impossible de charger les localités (réessaie).",
+    postalPick: "Choisis une localité :",
     aiAnalysisFor: "Analyse IA pour",
     demoMode: "Mode démonstration — Données réalistes simulées pour la Belgique",
     liveMode: "Données en direct (Open-Meteo)",
@@ -32,17 +51,8 @@ const TRANSLATIONS = {
     currentRain: "Pluie actuelle",
     uvMax: "UV Max",
     temperatures7days: "Températures 7 jours",
-    cold: "Froid",
-    mild: "Doux",
-    hot: "Chaud",
     hourlyForecast: "Prévisions horaires (48h)",
     scrollHint: "← Faites défiler pour voir les prochaines heures →",
-    forecast7days: "Prévisions 7 jours",
-    sources: "Sources (profil Belgique — MVP)",
-    models: "Modèles : ECMWF, DWD, Open-Meteo",
-    now: "Maintenant",
-    today: "Aujourd'hui",
-    tomorrow: "Demain",
     loading: "Chargement de la météo…",
     errorTitle: "Impossible de charger la météo",
     retry: "Réessayer",
@@ -58,6 +68,13 @@ const TRANSLATIONS = {
     title: "Weer AI België",
     subtitle: "Intelligente voorspellingen geoptimaliseerd voor België",
     chooseCity: "Kies een stad:",
+    postalTitle: "Zoeken op postcode",
+    postalPlaceholder: "Bijv.: 4450",
+    postalHint: "Typ 4 cijfers en kies daarna een plaats (dorp).",
+    postalSearching: "Zoeken…",
+    postalNoResults: "Geen resultaat voor deze postcode.",
+    postalError: "Kan plaatsen niet laden (probeer opnieuw).",
+    postalPick: "Kies een plaats:",
     aiAnalysisFor: "AI-analyse voor",
     demoMode: "Demonstratiemodus — Realistische gesimuleerde gegevens voor België",
     liveMode: "Live data (Open-Meteo)",
@@ -69,17 +86,8 @@ const TRANSLATIONS = {
     currentRain: "Huidige regen",
     uvMax: "UV Max",
     temperatures7days: "Temperaturen 7 dagen",
-    cold: "Koud",
-    mild: "Mild",
-    hot: "Warm",
     hourlyForecast: "Uurvoorspelling (48u)",
     scrollHint: "← Scroll om de volgende uren te zien →",
-    forecast7days: "Voorspelling 7 dagen",
-    sources: "Bronnen (Belgisch profiel — MVP)",
-    models: "Modellen: ECMWF, DWD, Open-Meteo",
-    now: "Nu",
-    today: "Vandaag",
-    tomorrow: "Morgen",
     loading: "Weer laden…",
     errorTitle: "Weer kan niet geladen worden",
     retry: "Opnieuw",
@@ -95,6 +103,13 @@ const TRANSLATIONS = {
     title: "Wetter KI Belgien",
     subtitle: "Intelligente Vorhersagen optimiert für Belgien",
     chooseCity: "Stadt wählen:",
+    postalTitle: "Suche nach Postleitzahl",
+    postalPlaceholder: "z.B. 4450",
+    postalHint: "Gib 4 Ziffern ein und wähle dann eine Ortschaft.",
+    postalSearching: "Suche…",
+    postalNoResults: "Keine Ergebnisse für diese Postleitzahl.",
+    postalError: "Ortschaften konnten nicht geladen werden.",
+    postalPick: "Ortschaft wählen:",
     aiAnalysisFor: "KI-Analyse für",
     demoMode: "Demomodus — Realistische simulierte Daten für Belgien",
     liveMode: "Live-Daten (Open-Meteo)",
@@ -106,17 +121,8 @@ const TRANSLATIONS = {
     currentRain: "Aktueller Regen",
     uvMax: "UV Max",
     temperatures7days: "Temperaturen 7 Tage",
-    cold: "Kalt",
-    mild: "Mild",
-    hot: "Heiß",
     hourlyForecast: "Stundenvorhersage (48h)",
     scrollHint: "← Für die nächsten Stunden scrollen →",
-    forecast7days: "Vorhersage 7 Tage",
-    sources: "Quellen (Belgien-Profil — MVP)",
-    models: "Modelle: ECMWF, DWD, Open-Meteo",
-    now: "Jetzt",
-    today: "Heute",
-    tomorrow: "Morgen",
     loading: "Wetter wird geladen…",
     errorTitle: "Wetter kann nicht geladen werden",
     retry: "Erneut versuchen",
@@ -132,6 +138,13 @@ const TRANSLATIONS = {
     title: "Weather AI Belgium",
     subtitle: "Smart forecasts optimized for Belgium",
     chooseCity: "Choose a city:",
+    postalTitle: "Search by postal code",
+    postalPlaceholder: "e.g. 4450",
+    postalHint: "Type 4 digits, then pick a locality (village).",
+    postalSearching: "Searching…",
+    postalNoResults: "No results for this postal code.",
+    postalError: "Unable to load localities (try again).",
+    postalPick: "Pick a locality:",
     aiAnalysisFor: "AI analysis for",
     demoMode: "Demo mode — Realistic simulated data for Belgium",
     liveMode: "Live data (Open-Meteo)",
@@ -143,17 +156,8 @@ const TRANSLATIONS = {
     currentRain: "Current rain",
     uvMax: "UV Max",
     temperatures7days: "Temperatures 7 days",
-    cold: "Cold",
-    mild: "Mild",
-    hot: "Hot",
     hourlyForecast: "Hourly forecast (48h)",
     scrollHint: "← Scroll to see next hours →",
-    forecast7days: "7-day forecast",
-    sources: "Sources (Belgium profile — MVP)",
-    models: "Models: ECMWF, DWD, Open-Meteo",
-    now: "Now",
-    today: "Today",
-    tomorrow: "Tomorrow",
     loading: "Loading weather…",
     errorTitle: "Unable to load weather",
     retry: "Retry",
@@ -184,21 +188,6 @@ function fmt(n, digits = 0) {
   return Number(n).toFixed(digits);
 }
 
-function getDayName(language, dateStr, index, t) {
-  const dayDate = new Date(dateStr);
-  if (index === 0) return t.today;
-  if (index === 1) return t.tomorrow;
-
-  const dayNames = {
-    fr: ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"],
-    nl: ["zo", "ma", "di", "wo", "do", "vr", "za"],
-    de: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
-    en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  };
-
-  return dayNames[language]?.[dayDate.getDay()] || dayDate.toLocaleDateString();
-}
-
 function getWeatherIcon(code, className = "w-12 h-12") {
   if (code === 0) return <Sun className={`${className} text-yellow-500`} />;
   if (code <= 3) return <Cloud className={`${className} text-slate-400`} />;
@@ -215,8 +204,11 @@ function getWeatherDescription(language, code) {
     de: { 0: "Klar", 1: "Überwiegend klar", 2: "Teilweise bewölkt", 3: "Bewölkt", 45: "Nebel", 48: "Gefrierender Nebel", 51: "Leichter Nieselregen", 61: "Leichter Regen", 63: "Mäßiger Regen", 65: "Starker Regen", 71: "Leichter Schnee", 80: "Schauer", 95: "Gewitter" },
     en: { 0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Freezing fog", 51: "Light drizzle", 61: "Light rain", 63: "Moderate rain", 65: "Heavy rain", 71: "Light snow", 80: "Showers", 95: "Thunderstorm" }
   };
-
-  const fallback = language === "fr" ? "Conditions variables" : language === "nl" ? "Variabele omstandigheden" : language === "de" ? "Variable Bedingungen" : "Variable conditions";
+  const fallback =
+    language === "fr" ? "Conditions variables" :
+    language === "nl" ? "Variabele omstandigheden" :
+    language === "de" ? "Variable Bedingungen" :
+    "Variable conditions";
   return descriptions?.[language]?.[code] || fallback;
 }
 
@@ -319,11 +311,20 @@ export default function App() {
   const [error, setError] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
 
+  // --- Code postal BE ---
+  const [postalCode, setPostalCode] = useState("");
+  const [postalResults, setPostalResults] = useState([]);
+  const [postalLoading, setPostalLoading] = useState(false);
+  const [postalMessage, setPostalMessage] = useState("");
+  const postalDebounceRef = useRef(null);
+
   const [updateReady, setUpdateReady] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
 
   const abortRef = useRef(null);
   const t = TRANSLATIONS[language] || TRANSLATIONS.fr;
+
+  const makeNameObj = (label) => ({ fr: label, nl: label, de: label, en: label });
 
   useEffect(() => setLanguage(detectLang()), []);
 
@@ -376,7 +377,9 @@ export default function App() {
     }
   }
 
-  function changeCity(city) { setLocation({ name: city.name, lat: city.lat, lon: city.lon }); }
+  function changeCity(city) {
+    setLocation({ name: city.name, lat: city.lat, lon: city.lon });
+  }
 
   async function useMyLocation() {
     if (!navigator?.geolocation) { setError("Geolocation not supported"); return; }
@@ -396,6 +399,72 @@ export default function App() {
     );
   }
 
+  async function searchByPostalCode(pc) {
+    const clean = (pc || "").trim();
+
+    setPostalMessage("");
+    setPostalResults([]);
+
+    if (!/^\d{4}$/.test(clean)) return;
+
+    setPostalLoading(true);
+    try {
+      const res = await fetch(`https://api.zippopotam.us/be/${clean}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setPostalMessage(t.postalNoResults);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+      const places = (json.places || [])
+        .map((p, idx) => ({
+          id: `${clean}-${idx}-${p["place name"]}`,
+          name: p["place name"],
+          state: p.state,
+          lat: Number(p.latitude),
+          lon: Number(p.longitude),
+        }))
+        .filter((p) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon))
+        .filter((p, i, arr) => arr.findIndex((x) => x.name === p.name) === i)
+        .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+      if (!places.length) setPostalMessage(t.postalNoResults);
+      else setPostalResults(places);
+    } catch (e) {
+      console.error(e);
+      setPostalMessage(t.postalError);
+    } finally {
+      setPostalLoading(false);
+    }
+  }
+
+  function selectPostalPlace(place) {
+    const label = `${postalCode.trim()} ${place.name}`;
+    setLocation({ name: makeNameObj(label), lat: place.lat, lon: place.lon });
+    setPostalResults([]);
+    setPostalMessage("");
+  }
+
+  useEffect(() => {
+    if (postalDebounceRef.current) clearTimeout(postalDebounceRef.current);
+    const clean = postalCode.trim();
+
+    if (clean.length === 4) {
+      postalDebounceRef.current = setTimeout(() => searchByPostalCode(clean), 350);
+    } else {
+      setPostalResults([]);
+      setPostalMessage("");
+    }
+
+    return () => {
+      if (postalDebounceRef.current) clearTimeout(postalDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postalCode, language]);
+
   const aiAnalysis = useMemo(() => {
     if (!weatherData?.current || !weatherData?.daily) return { emoji: "🌤️", text: "" };
 
@@ -410,47 +479,15 @@ export default function App() {
     const conf = estimateConfidence({ rainProb, windSpeed });
     const confLabel = conf === "high" ? t.highConfidence : conf === "medium" ? t.mediumConfidence : t.lowConfidence;
 
-    const templates = {
-      fr: {
-        rainStrong: () => `Forte probabilité de pluie aujourd'hui (${rainProb}%). Il fait ${temp}°C avec ${weatherDesc.toLowerCase()}. Confiance : ${confLabel}.`,
-        rainMaybe: () => `Temps incertain (${rainProb}% de pluie possible). Il fait ${temp}°C avec ${weatherDesc.toLowerCase()}. Confiance : ${confLabel}.`,
-        cold: () => `Journée froide (${temp}°C) avec ${weatherDesc.toLowerCase()}. Attention au gel possible. Confiance : ${confLabel}.`,
-        windy: () => `Vent soutenu (${windSpeed} km/h). Température ${temp}°C et ${weatherDesc.toLowerCase()}. Confiance : ${confLabel}.`,
-        base: () => `Température ${temp}°C, ${weatherDesc.toLowerCase()}. Confiance : ${confLabel}.`
-      },
-      nl: {
-        rainStrong: () => `Grote kans op regen vandaag (${rainProb}%). ${temp}°C en ${weatherDesc.toLowerCase()}. Vertrouwen: ${confLabel}.`,
-        rainMaybe: () => `Onzeker weer (${rainProb}% kans op regen). ${temp}°C en ${weatherDesc.toLowerCase()}. Vertrouwen: ${confLabel}.`,
-        cold: () => `Koude dag (${temp}°C) met ${weatherDesc.toLowerCase()}. Vertrouwen: ${confLabel}.`,
-        windy: () => `Stevige wind (${windSpeed} km/u). ${temp}°C en ${weatherDesc.toLowerCase()}. Vertrouwen: ${confLabel}.`,
-        base: () => `${temp}°C en ${weatherDesc.toLowerCase()}. Vertrouwen: ${confLabel}.`
-      },
-      de: {
-        rainStrong: () => `Hohe Regenwahrscheinlichkeit heute (${rainProb}%). ${temp}°C und ${weatherDesc.toLowerCase()}. Vertrauen: ${confLabel}.`,
-        rainMaybe: () => `Unsicheres Wetter (${rainProb}% Regenwahrscheinlichkeit). ${temp}°C und ${weatherDesc.toLowerCase()}. Vertrauen: ${confLabel}.`,
-        cold: () => `Kalter Tag (${temp}°C) mit ${weatherDesc.toLowerCase()}. Vertrauen: ${confLabel}.`,
-        windy: () => `Kräftiger Wind (${windSpeed} km/h). ${temp}°C und ${weatherDesc.toLowerCase()}. Vertrauen: ${confLabel}.`,
-        base: () => `${temp}°C und ${weatherDesc.toLowerCase()}. Vertrauen: ${confLabel}.`
-      },
-      en: {
-        rainStrong: () => `High chance of rain today (${rainProb}%). It's ${temp}°C with ${weatherDesc.toLowerCase()}. Confidence: ${confLabel}.`,
-        rainMaybe: () => `Uncertain weather (${rainProb}% chance of rain). It's ${temp}°C with ${weatherDesc.toLowerCase()}. Confidence: ${confLabel}.`,
-        cold: () => `Cold day (${temp}°C) with ${weatherDesc.toLowerCase()}. Confidence: ${confLabel}.`,
-        windy: () => `Windy (${windSpeed} km/h). ${temp}°C and ${weatherDesc.toLowerCase()}. Confidence: ${confLabel}.`,
-        base: () => `${temp}°C and ${weatherDesc.toLowerCase()}. Confidence: ${confLabel}.`
-      }
-    };
-
-    const ph = templates[language] || templates.fr;
     let emoji = "🌤️";
     let text = "";
 
-    if (rainProb > 70) { emoji = "☔"; text = ph.rainStrong(); }
-    else if (rainProb > 40) { emoji = "🌦️"; text = ph.rainMaybe(); }
-    else if (temp < 3) { emoji = "❄️"; text = ph.cold(); }
-    else if (windSpeed > 35) { emoji = "💨"; text = ph.windy(); }
-    else if (temp > 20) { emoji = "☀️"; text = ph.base(); }
-    else { emoji = "🌤️"; text = ph.base(); }
+    if (rainProb > 70) { emoji = "☔"; text = `${rainProb}% pluie possible. ${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
+    else if (rainProb > 40) { emoji = "🌦️"; text = `${rainProb}% pluie possible. ${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
+    else if (temp < 3) { emoji = "❄️"; text = `${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
+    else if (windSpeed > 35) { emoji = "💨"; text = `${windSpeed} km/h de vent. ${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
+    else if (temp > 20) { emoji = "☀️"; text = `${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
+    else { emoji = "🌤️"; text = `${temp}°C, ${weatherDesc.toLowerCase()}. ${confLabel}.`; }
 
     return { emoji, text };
   }, [weatherData, language, t]);
@@ -492,7 +529,7 @@ export default function App() {
                   Demo
                 </button>
               </div>
-              <div className={`mt-4 text-xs ${theme.muted2}`}>Astuce : si une requête réseau est bloquée, passe en « Demo » pour continuer à travailler sur le design.</div>
+              <div className={`mt-4 text-xs ${theme.muted2}`}>Astuce : passe en « Demo » si le live est bloqué.</div>
             </div>
           </div>
         </div>
@@ -530,7 +567,6 @@ export default function App() {
               <button
                 onClick={() => setDarkMode((v) => !v)}
                 className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${theme.card} ${theme.text}`}
-                title="Toggle theme"
               >
                 {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 <span className="hidden sm:inline">{darkMode ? t.dark : t.light}</span>
@@ -563,6 +599,7 @@ export default function App() {
           </div>
         </div>
 
+        {/* Sélection + Code Postal */}
         <div className={`rounded-2xl border shadow-lg p-4 mb-6 ${theme.card}`}>
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
@@ -575,6 +612,51 @@ export default function App() {
             </button>
           </div>
 
+          {/* Code postal */}
+          <div className="mb-4">
+            <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>{t.postalTitle}</div>
+
+            <input
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+              placeholder={t.postalPlaceholder}
+              inputMode="numeric"
+              className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${theme.card} ${theme.text}`}
+            />
+
+            <div className={`text-xs mt-2 ${theme.muted2}`}>{t.postalHint}</div>
+
+            {postalLoading && (
+              <div className="flex items-center gap-2 mt-3 text-sm text-indigo-500 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{t.postalSearching}</span>
+              </div>
+            )}
+
+            {!!postalMessage && !postalLoading && (
+              <div className={`mt-3 text-sm ${theme.muted}`}>{postalMessage}</div>
+            )}
+
+            {postalResults.length > 0 && (
+              <div className="mt-3">
+                <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>{t.postalPick}</div>
+                <div className={`max-h-56 overflow-auto rounded-xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                  {postalResults.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => selectPostalPlace(p)}
+                      className={`w-full text-left px-3 py-2 transition ${darkMode ? "hover:bg-slate-800" : "hover:bg-slate-50"}`}
+                    >
+                      <div className={`font-bold ${theme.text}`}>{p.name}</div>
+                      <div className={`text-xs ${theme.muted2}`}>{p.state}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Villes rapides */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {BELGIAN_CITIES.map((city) => {
               const active = location?.name?.fr === city.name.fr;
@@ -582,7 +664,9 @@ export default function App() {
                 <button
                   key={city.name.fr}
                   onClick={() => changeCity(city)}
-                  className={`px-4 py-2 rounded-xl font-semibold transition text-sm ${active ? "bg-indigo-600 text-white" : darkMode ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                  className={`px-4 py-2 rounded-xl font-semibold transition text-sm ${
+                    active ? "bg-indigo-600 text-white" : darkMode ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
                 >
                   {city.name[language]}
                 </button>
@@ -591,6 +675,7 @@ export default function App() {
           </div>
         </div>
 
+        {/* Bandeau IA */}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
           <div className="flex items-start gap-3">
             <div className="text-4xl">{aiAnalysis.emoji}</div>
@@ -601,6 +686,7 @@ export default function App() {
           </div>
         </div>
 
+        {/* Carte actuelle */}
         <div className={`rounded-2xl border shadow-xl p-4 sm:p-8 mb-6 ${theme.card}`}>
           <div className="flex items-center justify-between mb-6">
             <div className={`flex items-center gap-2 ${theme.muted}`}>
@@ -658,43 +744,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className={`rounded-2xl border shadow-xl p-4 sm:p-8 mb-6 ${theme.card}`}>
-          <div className="flex items-center gap-2 mb-4 sm:mb-6">
-            <span className="text-2xl">🌡️</span>
-            <h3 className={`text-xl sm:text-2xl font-extrabold ${theme.text}`}>{t.temperatures7days}</h3>
-          </div>
-
-          <div className="space-y-4">
-            {(daily.time || []).slice(0, 7).map((date, index) => {
-              const dayName = getDayName(language, date, index, t);
-              const maxTemp = Math.round((daily.temperature_2m_max || [])[index] ?? 0);
-              const minTemp = Math.round((daily.temperature_2m_min || [])[index] ?? 0);
-
-              const tempRange = 26;
-              const minOffset = clamp(((minTemp + 8) / tempRange) * 100, 0, 100);
-              const maxOffset = clamp(((maxTemp + 8) / tempRange) * 100, 0, 100);
-              const barWidth = clamp(maxOffset - minOffset, 4, 100);
-
-              const p = Math.round((daily.precipitation_probability_max || [])[index] ?? 0);
-
-              return (
-                <div key={date} className="flex items-center gap-3 sm:gap-4">
-                  <div className={`w-16 sm:w-20 font-semibold capitalize text-sm flex-shrink-0 ${theme.text}`}>{dayName}</div>
-                  <div className="scale-75 sm:scale-90 flex-shrink-0">{getWeatherIcon((daily.weather_code || [])[index] ?? 3, "w-10 h-10")}</div>
-                  <div className="flex-1 relative h-10 flex items-center">
-                    <div className={`${darkMode ? "bg-slate-800" : "bg-slate-100"} absolute inset-0 rounded-full`} />
-                    <div className="absolute h-8 bg-gradient-to-r from-sky-500 via-yellow-400 to-rose-500 rounded-full flex items-center justify-between px-2" style={{ left: `${minOffset}%`, width: `${Math.min(100 - minOffset, barWidth)}%` }}>
-                      <span className="text-xs font-extrabold text-white drop-shadow">{minTemp}°</span>
-                      <span className="text-xs font-extrabold text-white drop-shadow">{maxTemp}°</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-sky-500 font-bold flex items-center gap-1 w-12 sm:w-14 flex-shrink-0"><Droplets className="w-3 h-3" /><span>{p}%</span></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+        {/* Horaires */}
         <div className={`rounded-2xl border shadow-xl p-4 sm:p-8 mb-6 ${theme.card}`}>
           <h3 className={`text-xl sm:text-2xl font-extrabold mb-4 sm:mb-6 ${theme.text}`}>{t.hourlyForecast}</h3>
           <div className="overflow-x-auto">
@@ -709,8 +759,11 @@ export default function App() {
                 const wc = (hourly.weather_code || [])[index] ?? 3;
 
                 return (
-                  <div key={`${time}-${index}`} className={`flex-shrink-0 w-24 p-4 rounded-2xl text-center border ${isNow ? (darkMode ? "bg-indigo-500/15 border-indigo-500/50" : "bg-indigo-50 border-indigo-200") : (darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-100")}`}>
-                    <div className={`text-sm font-semibold mb-2 ${theme.muted}`}>{isNow ? t.now : `${hour}h`}</div>
+                  <div key={`${time}-${index}`} className={`flex-shrink-0 w-24 p-4 rounded-2xl text-center border ${
+                    isNow ? (darkMode ? "bg-indigo-500/15 border-indigo-500/50" : "bg-indigo-50 border-indigo-200")
+                         : (darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-100")
+                  }`}>
+                    <div className={`text-sm font-semibold mb-2 ${theme.muted}`}>{isNow ? "Now" : `${hour}h`}</div>
                     <div className="flex justify-center mb-2">{getWeatherIcon(wc, "w-10 h-10")}</div>
                     <div className={`text-xl font-extrabold mb-1 ${theme.text}`}>{temp}°</div>
                     <div className="flex items-center justify-center gap-1 text-xs text-sky-500 font-bold mb-1"><Droplets className="w-3 h-3" /><span>{pp}%</span></div>
@@ -724,9 +777,7 @@ export default function App() {
         </div>
 
         <div className={`text-center mt-8 text-sm ${theme.muted2}`}>
-          <p className="font-semibold">{t.sources} 🇧🇪</p>
-          <p className="mt-1">{t.models}</p>
-          <p className="mt-3 text-xs opacity-80">PWA : partage par lien + installable. Les mises à jour sont poussées automatiquement.</p>
+          <p className="font-semibold">PWA : partage par lien + installable.</p>
         </div>
       </div>
     </div>
