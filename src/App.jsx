@@ -431,8 +431,14 @@ export default function App() {
         .filter((p, i, arr) => arr.findIndex((x) => x.name === p.name) === i)
         .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 
-      if (!places.length) setPostalMessage(t.postalNoResults);
-      else setPostalResults(places);
+      if (!places.length) {
+        setPostalMessage(t.postalNoResults);
+      } else if (places.length === 1) {
+        // ✅ Auto-sélection si une seule localité
+        selectPostalPlace(places[0]);
+      } else {
+        setPostalResults(places);
+      }
     } catch (e) {
       console.error(e);
       setPostalMessage(t.postalError);
