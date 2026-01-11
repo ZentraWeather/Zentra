@@ -40,6 +40,13 @@ const TRANSLATIONS = {
     postalNoResults: "Aucun résultat pour ce code postal.",
     postalError: "Impossible de charger les localités (réessaie).",
     postalPick: "Choisis une localité :",
+	placeTitle: "Recherche ville / localité",
+	placePlaceholder: "Ex: Slins, Juprelle, Oreye…",
+	placeHint: "Tape au moins 2 lettres, puis choisis une suggestion.",
+	placeSearching: "Recherche…",
+	placeNoResults: "Aucun résultat en Belgique.",
+	placeError: "Impossible de charger les suggestions (réessaie).",
+	placePick: "Suggestions :",
     aiAnalysisFor: "Analyse IA pour",
     demoMode: "Mode démonstration — Données réalistes simulées pour la Belgique",
     liveMode: "Données en direct (Open-Meteo)",
@@ -75,6 +82,13 @@ const TRANSLATIONS = {
     postalNoResults: "Geen resultaat voor deze postcode.",
     postalError: "Kan plaatsen niet laden (probeer opnieuw).",
     postalPick: "Kies een plaats:",
+	placeTitle: "Zoeken op stad / plaats",
+	placePlaceholder: "Bijv.: Slins, Juprelle, Oreye…",
+	placeHint: "Typ minstens 2 letters en kies daarna een suggestie.",
+	placeSearching: "Zoeken…",
+	placeNoResults: "Geen resultaten in België.",
+	placeError: "Kan suggesties niet laden (probeer opnieuw).",
+	placePick: "Suggesties:",
     aiAnalysisFor: "AI-analyse voor",
     demoMode: "Demonstratiemodus — Realistische gesimuleerde gegevens voor België",
     liveMode: "Live data (Open-Meteo)",
@@ -110,6 +124,13 @@ const TRANSLATIONS = {
     postalNoResults: "Keine Ergebnisse für diese Postleitzahl.",
     postalError: "Ortschaften konnten nicht geladen werden.",
     postalPick: "Ortschaft wählen:",
+	placeTitle: "Suche Stadt / Ort",
+	placePlaceholder: "z.B. Slins, Juprelle, Oreye…",
+	placeHint: "Gib mindestens 2 Buchstaben ein und wähle dann einen Vorschlag.",
+	placeSearching: "Suche…",
+	placeNoResults: "Keine Ergebnisse in Belgien.",
+	placeError: "Vorschläge konnten nicht geladen werden (bitte erneut versuchen).",
+	placePick: "Vorschläge:",
     aiAnalysisFor: "KI-Analyse für",
     demoMode: "Demomodus — Realistische simulierte Daten für Belgien",
     liveMode: "Live-Daten (Open-Meteo)",
@@ -145,6 +166,13 @@ const TRANSLATIONS = {
     postalNoResults: "No results for this postal code.",
     postalError: "Unable to load localities (try again).",
     postalPick: "Pick a locality:",
+	placeTitle: "Search city / locality",
+	placePlaceholder: "e.g. Slins, Juprelle…",
+	placeHint: "Type at least 2 letters, then pick a suggestion.",
+	placeSearching: "Searching…",
+	placeNoResults: "No results in Belgium.",
+	placeError: "Unable to load suggestions (try again).",
+	placePick: "Suggestions:",
     aiAnalysisFor: "AI analysis for",
     demoMode: "Demo mode — Realistic simulated data for Belgium",
     liveMode: "Live data (Open-Meteo)",
@@ -317,6 +345,97 @@ export default function App() {
   const [postalLoading, setPostalLoading] = useState(false);
   const [postalMessage, setPostalMessage] = useState("");
   const postalDebounceRef = useRef(null);
+  
+    // --- Recherche ville / localité (Belgique) ---
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState([]);
+  const [placeLoading, setPlaceLoading] = useState(false);
+  const [placeMessage, setPlaceMessage] = useState("");
+  const placeDebounceRef = useRef(null);
+
+  async function searchByPlaceName(q) {
+    const clean = (q || "").trim();
+    setPlaceMessage("");
+    setPlaceResults([]);
+
+    if (clean.length < 2) return;
+
+    setPlaceLoading(true);
+    try {
+      const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      url.searchParams.set("name", clean);
+      url.searchParams.set("count", "10");
+      url.searchParams.set("language", language); // fr/nl/de/en
+      url.searchParams.set("format", "json");
+      url.searchParams.set("country_code", "BE"); // ✅ Belgique uniquement
+
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      const results = (json.results || [])
+        .map((r, idx) => ({
+          id: `${r.id || "r"}-${idx}`,
+          name: r.name,
+          admin1: r.admin1,      // province/région
+          admin2: r.admin2,      // parfois dispo
+          postcode: r.postcode,  // parfois dispo
+          lat: r.latitude,
+          lon: r.longitude,
+        }))
+        .filter((r) => r.name && Number.isFinite(r.lat) && Number.isFinite(r.lon));
+
+      if (!results.length) {
+        setPlaceMessage(t.placeNoResults);
+      } else {
+        setPlaceResults(results);
+      }
+    } catch (e) {
+      console.error(e);
+      setPlaceMessage(t.placeError);
+    } finally {
+      setPlaceLoading(false);
+    }
+  }
+
+  function selectPlaceResult(r) {
+    const label = r.postcode ? `${r.postcode} ${r.name}` : r.name;
+
+    setLocation({
+      name: makeNameObj(label),
+      lat: r.lat,
+      lon: r.lon,
+    });
+
+    // Optionnel : si on a un code postal, on pré-remplit le champ CP
+    if (r.postcode && /^\d{4}$/.test(String(r.postcode))) {
+      setPostalCode(String(r.postcode));
+    }
+
+    setPlaceResults([]);
+    setPlaceMessage("");
+  }
+
+  // Debounce : recherche quand on tape (>= 2 lettres)
+  useEffect(() => {
+    if (placeDebounceRef.current) clearTimeout(placeDebounceRef.current);
+
+    const clean = placeQuery.trim();
+    if (clean.length >= 2) {
+      placeDebounceRef.current = setTimeout(() => {
+        searchByPlaceName(clean);
+      }, 350);
+    } else {
+      setPlaceResults([]);
+      setPlaceMessage("");
+    }
+
+    return () => {
+      if (placeDebounceRef.current) clearTimeout(placeDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeQuery, language]);
+
 
   const [updateReady, setUpdateReady] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -655,6 +774,54 @@ export default function App() {
                     >
                       <div className={`font-bold ${theme.text}`}>{p.name}</div>
                       <div className={`text-xs ${theme.muted2}`}>{p.state}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+		  
+          {/* Ville / Localité */}
+          <div className="mb-4">
+            <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>{t.placeTitle}</div>
+
+            <input
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+              placeholder={t.placePlaceholder}
+              className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${theme.card} ${theme.text}`}
+            />
+
+            <div className={`text-xs mt-2 ${theme.muted2}`}>{t.placeHint}</div>
+
+            {placeLoading && (
+              <div className="flex items-center gap-2 mt-3 text-sm text-indigo-500 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{t.placeSearching}</span>
+              </div>
+            )}
+
+            {!!placeMessage && !placeLoading && (
+              <div className={`mt-3 text-sm ${theme.muted}`}>{placeMessage}</div>
+            )}
+
+            {placeResults.length > 0 && (
+              <div className="mt-3">
+                <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>{t.placePick}</div>
+
+                <div className={`max-h-56 overflow-auto rounded-xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                  {placeResults.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => selectPlaceResult(r)}
+                      className={`w-full text-left px-3 py-2 transition ${darkMode ? "hover:bg-slate-800" : "hover:bg-slate-50"}`}
+                    >
+                      <div className={`font-bold ${theme.text}`}>
+                        {r.name}{r.postcode ? ` (${r.postcode})` : ""}
+                      </div>
+                      <div className={`text-xs ${theme.muted2}`}>
+                        {[r.admin2, r.admin1].filter(Boolean).join(" · ")}
+                      </div>
                     </button>
                   ))}
                 </div>
