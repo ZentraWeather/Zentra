@@ -43,4 +43,9 @@ export default {
   updateReady: "Update beschikbaar",
   updateCta: "Herladen",
   now: "Nu",
+  today: "Vandaag",
+  tomorrow: "Morgen",
+  cold: "Koud",
+  mild: "Mild",
+  hot: "Warm",
 };

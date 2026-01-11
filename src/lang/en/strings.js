@@ -43,4 +43,9 @@ export default {
   updateReady: "Update available",
   updateCta: "Reload",
   now: "Now",
+  today: "Today",
+  tomorrow: "Tomorrow",
+  cold: "Cold",
+  mild: "Mild",
+  hot: "Hot",
 };

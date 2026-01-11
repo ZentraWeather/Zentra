@@ -42,5 +42,10 @@ export default {
   light: "Clair",
   updateReady: "Mise à jour disponible",
   updateCta: "Recharger",
-  now: "Maintenant",  
+  now: "Maintenant",
+  today: "Aujourd'hui",
+  tomorrow: "Demain",
+  cold: "Froid",
+  mild: "Doux",
+  hot: "Chaud",
 };
