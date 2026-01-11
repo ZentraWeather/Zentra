@@ -483,19 +483,31 @@ export default function App() {
     const current = weatherData.current;
     const daily = weatherData.daily;
     const hourly = weatherData.hourly;
-	const aiNarrative = useMemo(() => {
-    const locationLabel = location?.name?.[language] || location?.name?.fr || "";
-    return buildAiNarrative({
-      t,
-      language,
-      locationLabel,
-      current: weatherData?.current,
-      hourly: weatherData?.hourly,
-      daily: weatherData?.daily,
-      getWeatherDescription,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, language, location, weatherData]);
+const aiLong = useMemo(() => {
+  const locationLabel = location?.name?.[language] || location?.name?.fr || "";
+  return buildAiNarrative({
+    t,
+    language,
+    locationLabel,
+    current,
+    hourly,
+    daily,
+    getWeatherDescription,
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [t, language, location, current, hourly, daily]);
+
+// On réutilise ton rendu existant (title / why / lines / tips)
+// et on garde ton emoji actuel (aiAnalysis.emoji).
+const aiBanner = useMemo(() => {
+  return {
+    emoji: aiAnalysis?.emoji || "🌤️",
+    title: aiLong.title,
+    confidenceWhy: aiLong.headline,
+    lines: aiLong.paragraphs,
+    tips: aiLong.bullets,
+  };
+}, [aiLong, aiAnalysis]);
 
     const tempNow = Math.round(current.temperature_2m ?? 0);
     const feelsNow = Math.round(current.apparent_temperature ?? tempNow);
