@@ -42,4 +42,5 @@ export default {
   light: "Hell",
   updateReady: "Update verfügbar",
   updateCta: "Neu laden",
+  now: "Jetzt",
 };

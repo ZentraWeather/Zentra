@@ -42,4 +42,5 @@ export default {
   light: "Licht",
   updateReady: "Update beschikbaar",
   updateCta: "Herladen",
+  now: "Nu",
 };

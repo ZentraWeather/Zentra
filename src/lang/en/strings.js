@@ -42,4 +42,5 @@ export default {
   light: "Light",
   updateReady: "Update available",
   updateCta: "Reload",
+  now: "Now",
 };

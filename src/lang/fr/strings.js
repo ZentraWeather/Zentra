@@ -42,4 +42,5 @@ export default {
   light: "Clair",
   updateReady: "Mise à jour disponible",
   updateCta: "Recharger",
+  now: "Maintenant",  
 };

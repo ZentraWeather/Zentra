@@ -766,7 +766,7 @@ export default function App() {
                     isNow ? (darkMode ? "bg-indigo-500/15 border-indigo-500/50" : "bg-indigo-50 border-indigo-200")
                          : (darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-100")
                   }`}>
-                    <div className={`text-sm font-semibold mb-2 ${theme.muted}`}>{isNow ? "Now" : `${hour}h`}</div>
+                    <div className={`text-sm font-semibold mb-2 ${theme.muted}`}>{isNow ? (t.now || "Maintenant") : `${hour}h`}</div>
                     <div className="flex justify-center mb-2">{getWeatherIcon(wc, "w-10 h-10")}</div>
                     <div className={`text-xl font-extrabold mb-1 ${theme.text}`}>{temp}°</div>
                     <div className="flex items-center justify-center gap-1 text-xs text-sky-500 font-bold mb-1"><Droplets className="w-3 h-3" /><span>{pp}%</span></div>
