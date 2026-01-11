@@ -1,68 +1,28 @@
 // src/utils/aiNarrative.js
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
+function safeNum(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function fmtTemp(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return `${Math.round(n)}°C`;
+function dayPartLabel(lang, key) {
+  const map = {
+    fr: { morning: "Matin", afternoon: "Après-midi", evening: "Soir" },
+    nl: { morning: "Ochtend", afternoon: "Namiddag", evening: "Avond" },
+    de: { morning: "Morgen", afternoon: "Nachmittag", evening: "Abend" },
+    en: { morning: "Morning", afternoon: "Afternoon", evening: "Evening" },
+  };
+  return (map[lang] || map.fr)[key] || key;
 }
 
-function pickPart(hour) {
-  if (hour < 6) return "night";
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
+function summarizePart({ temps, pops }) {
+  const min = Math.min(...temps);
+  const max = Math.max(...temps);
+  const pop = Math.max(...pops);
+  return { min, max, pop };
 }
 
-function summarizeHours(hours) {
-  if (!hours.length) return null;
-
-  let minT = Infinity, maxT = -Infinity;
-  let ppMax = 0;
-  let precipSum = 0;
-  let windMax = 0;
-
-  // “dominant” weather code (approx) via mode
-  const codeCount = new Map();
-
-  for (const h of hours) {
-    minT = Math.min(minT, h.temp);
-    maxT = Math.max(maxT, h.temp);
-    ppMax = Math.max(ppMax, h.pp);
-    precipSum += h.precip;
-    windMax = Math.max(windMax, h.wind);
-
-    codeCount.set(h.code, (codeCount.get(h.code) || 0) + 1);
-  }
-
-  let domCode = hours[0].code;
-  let best = -1;
-  for (const [code, c] of codeCount.entries()) {
-    if (c > best) { best = c; domCode = code; }
-  }
-
-  return { minT, maxT, ppMax, precipSum, windMax, domCode };
-}
-
-function confidenceLabel(t, confKey) {
-  // confKey: "high"|"medium"|"low"
-  if (confKey === "high") return t.highConfidence;
-  if (confKey === "medium") return t.mediumConfidence;
-  return t.lowConfidence;
-}
-
-// même logique que ton estimateConfidence, mais local ici (simple et stable)
-function estimateConfidence({ rainProb, windSpeed }) {
-  const midUncertainty = 1 - Math.abs((rainProb ?? 50) - 50) / 50;
-  const windPenalty = clamp((windSpeed ?? 0) / 60, 0, 1);
-  const score = clamp(0.85 - 0.35 * midUncertainty - 0.25 * windPenalty, 0.25, 0.95);
-  if (score >= 0.72) return "high";
-  if (score >= 0.5) return "medium";
-  return "low";
-}
-
+// Renvoie un objet “prêt à afficher” façon IRM : title + headline + paragraphs + bullets
 export function buildAiNarrative({
   t,
   language,
@@ -70,130 +30,116 @@ export function buildAiNarrative({
   current,
   hourly,
   daily,
-  getWeatherDescription, // (lang, code) => string
+  getWeatherDescription,
 }) {
-  if (!current || !hourly || !daily) return { title: "", headline: "", paragraphs: [], bullets: [] };
+  const tempNow = Math.round(safeNum(current?.temperature_2m, 0));
+  const windNow = Math.round(safeNum(current?.wind_speed_10m, 0));
+  const codeNow = safeNum(current?.weather_code, 3);
+  const descNow =
+    typeof getWeatherDescription === "function"
+      ? getWeatherDescription(language, codeNow)
+      : "";
 
-  const now = new Date();
-
-  // Construire les heures (48h)
-  const H = (hourly.time || []).slice(0, 48).map((time, i) => ({
-    dt: new Date(time),
-    temp: Number((hourly.temperature_2m || [])[i] ?? NaN),
-    pp: Number((hourly.precipitation_probability || [])[i] ?? 0),
-    precip: Number((hourly.precipitation || [])[i] ?? 0),
-    wind: Number((hourly.wind_speed_10m || [])[i] ?? 0),
-    code: Number((hourly.weather_code || [])[i] ?? 3),
-  })).filter((h) => Number.isFinite(h.temp) && h.dt instanceof Date && !Number.isNaN(h.dt.getTime()));
-
-  const future = H.filter((h) => h.dt >= now);
-
-  // Segments “proches” : next 6h, puis par parties de journée “reste d’aujourd’hui”
-  const next6h = future.slice(0, 6);
-
-  const todayKey = now.toDateString();
-  const todayFuture = future.filter((h) => h.dt.toDateString() === todayKey);
-
-  const byPartToday = {
-    morning: [],
-    afternoon: [],
-    evening: [],
-    night: [],
-  };
-
-  for (const h of todayFuture) {
-    byPartToday[pickPart(h.dt.getHours())].push(h);
-  }
-
-  const segMorning = summarizeHours(byPartToday.morning);
-  const segAfternoon = summarizeHours(byPartToday.afternoon);
-  const segEvening = summarizeHours(byPartToday.evening);
-
-  // “cette nuit” = heures jusqu’à demain 06:00
-  const nightHours = future.filter((h) => {
-    const isToday = h.dt.toDateString() === todayKey;
-    const isTomorrowEarly = (!isToday) && h.dt.getHours() < 6;
-    return pickPart(h.dt.getHours()) === "night" && (isToday || isTomorrowEarly);
-  });
-  const segNight = summarizeHours(nightHours);
-
-  // demain via daily[1]
-  const tomorrowMax = Number((daily.temperature_2m_max || [])[1] ?? NaN);
-  const tomorrowMin = Number((daily.temperature_2m_min || [])[1] ?? NaN);
-  const tomorrowPP = Number((daily.precipitation_probability_max || [])[1] ?? 0);
-  const tomorrowWind = Number((daily.wind_speed_10m_max || [])[1] ?? 0);
-  const tomorrowCode = Number((daily.weather_code || [])[1] ?? 3);
-
-  // headline: basé sur next6h
-  const next6 = summarizeHours(next6h) || segMorning || segAfternoon || segEvening || segNight;
-  const headDesc = next6 ? getWeatherDescription(language, next6.domCode).toLowerCase() : getWeatherDescription(language, current.weather_code).toLowerCase();
-  const headPP = next6 ? Math.round(next6.ppMax) : Math.round((daily.precipitation_probability_max || [0])[0] ?? 0);
-  const headWind = next6 ? Math.round(next6.windMax) : Math.round(current.wind_speed_10m ?? 0);
-
-  // risques
-  const freezingRisk =
-    (next6 && next6.ppMax >= 50 && next6.minT <= 1) ||
-    (segNight && segNight.ppMax >= 50 && segNight.minT <= 1);
-
-  const strongWindRisk = headWind >= 45 || tomorrowWind >= 50;
-  const heavyRainRisk = (next6 && next6.ppMax >= 80) || headPP >= 80;
-
-  const conf = estimateConfidence({ rainProb: headPP, windSpeed: headWind });
-  const confLabel = confidenceLabel(t, conf);
-
-  // Paragraphes (texte original)
-  const paragraphs = [];
-
-  paragraphs.push(
-    `${t.aiP1Intro} ${locationLabel}. ${t.aiP1Now}: ${fmtTemp(current.temperature_2m)} (${t.feelsLike.toLowerCase()} ${fmtTemp(current.apparent_temperature)}), ${getWeatherDescription(language, current.weather_code).toLowerCase()}. ` +
-    `${t.aiP1Wind}: ${Math.round(current.wind_speed_10m ?? 0)} km/h. ${t.aiP1Confidence} ${confLabel}.`
+  const popToday = Math.round(
+    safeNum((daily?.precipitation_probability_max || [0])[0], 0)
   );
+  const tMax = Math.round(safeNum((daily?.temperature_2m_max || [tempNow])[0], tempNow));
+  const tMin = Math.round(safeNum((daily?.temperature_2m_min || [tempNow])[0], tempNow));
+  const uv = Math.round(safeNum((daily?.uv_index_max || [0])[0], 0));
 
-  // Aujourd’hui (reste)
-  const todayBits = [];
-  const pushPart = (seg, labelKey) => {
-    if (!seg) return;
-    const desc = getWeatherDescription(language, seg.domCode).toLowerCase();
-    todayBits.push(
-      `${t[labelKey]}: ${fmtTemp(seg.minT)} → ${fmtTemp(seg.maxT)}, ${desc}${seg.ppMax ? `, ${Math.round(seg.ppMax)}% ${t.aiRainRisk}` : ""}${seg.windMax ? `, ${t.aiWindLabel} ${Math.round(seg.windMax)} km/h` : ""}.`
-    );
-  };
+  // Découpe “matin / après-midi / soir” sur les 24 prochaines heures (grossier mais très lisible)
+  const times = hourly?.time || [];
+  const temps = hourly?.temperature_2m || [];
+  const pops = hourly?.precipitation_probability || [];
 
-  pushPart(segMorning, "aiMorning");
-  pushPart(segAfternoon, "aiAfternoon");
-  pushPart(segEvening, "aiEvening");
+  const buckets = { morning: [], afternoon: [], evening: [] };
+  const bucketsPop = { morning: [], afternoon: [], evening: [] };
 
-  if (todayBits.length) {
-    paragraphs.push(`${t.aiTodayTitle} ${todayBits.join(" ")}`);
+  for (let i = 0; i < Math.min(24, times.length); i++) {
+    const d = new Date(times[i]);
+    const h = d.getHours();
+
+    let key = "evening";
+    if (h >= 6 && h < 12) key = "morning";
+    else if (h >= 12 && h < 18) key = "afternoon";
+    else key = "evening";
+
+    buckets[key].push(safeNum(temps[i], tempNow));
+    bucketsPop[key].push(safeNum(pops[i], 0));
   }
 
-  // Nuit
-  if (segNight) {
-    const desc = getWeatherDescription(language, segNight.domCode).toLowerCase();
-    paragraphs.push(
-      `${t.aiTonightTitle} ${desc}. ${t.aiTempsRange} ${fmtTemp(segNight.minT)} → ${fmtTemp(segNight.maxT)}. ` +
-      `${t.aiRainMax} ${Math.round(segNight.ppMax)}%. ${t.aiWindLabel} ${Math.round(segNight.windMax)} km/h.`
-    );
-  }
+  const parts = ["morning", "afternoon", "evening"].map((key) => {
+    const vals = buckets[key].length ? buckets[key] : [tempNow];
+    const pps = bucketsPop[key].length ? bucketsPop[key] : [popToday];
+    const s = summarizePart({ temps: vals, pops: pps });
+    return {
+      key,
+      label: dayPartLabel(language, key),
+      min: Math.round(s.min),
+      max: Math.round(s.max),
+      pop: Math.round(s.pop),
+    };
+  });
 
-  // Demain
-  if (Number.isFinite(tomorrowMax) && Number.isFinite(tomorrowMin)) {
-    const desc = getWeatherDescription(language, tomorrowCode).toLowerCase();
-    paragraphs.push(
-      `${t.aiTomorrowTitle} ${desc}. ${t.aiTempsRange} ${fmtTemp(tomorrowMin)} → ${fmtTemp(tomorrowMax)}. ` +
-      `${t.aiRainMax} ${Math.round(tomorrowPP)}%. ${t.aiWindLabel} ${Math.round(tomorrowWind)} km/h.`
-    );
-  }
+  // Titre + headline (style IRM)
+  const title =
+    language === "fr"
+      ? `Bulletin pour ${locationLabel}`
+      : language === "nl"
+      ? `Weerbericht voor ${locationLabel}`
+      : language === "de"
+      ? `Wetterbericht für ${locationLabel}`
+      : `Weather report for ${locationLabel}`;
 
+  const headline =
+    language === "fr"
+      ? `Actuellement : ${tempNow}°C, ${descNow.toLowerCase()} • Vent ${windNow} km/h • Pluie max aujourd’hui : ${popToday}%`
+      : language === "nl"
+      ? `Nu: ${tempNow}°C, ${descNow.toLowerCase()} • Wind ${windNow} km/u • Max. neerslagkans vandaag: ${popToday}%`
+      : language === "de"
+      ? `Aktuell: ${tempNow}°C, ${descNow.toLowerCase()} • Wind ${windNow} km/h • Max. Regenrisiko heute: ${popToday}%`
+      : `Now: ${tempNow}°C, ${descNow.toLowerCase()} • Wind ${windNow} km/h • Max rain chance today: ${popToday}%`;
+
+  // Paragraphes “rich”
+  const paragraphs = [
+    language === "fr"
+      ? `Températures : ${tMin}°C à ${tMax}°C aujourd’hui.`
+      : language === "nl"
+      ? `Temperaturen: vandaag van ${tMin}°C tot ${tMax}°C.`
+      : language === "de"
+      ? `Temperaturen: heute zwischen ${tMin}°C und ${tMax}°C.`
+      : `Temperatures: ${tMin}°C to ${tMax}°C today.`,
+    language === "fr"
+      ? `Lecture par moments : ${parts
+          .map((p) => `${p.label} ${p.min}–${p.max}°C (pluie ${p.pop}%)`)
+          .join(" • ")}.`
+      : language === "nl"
+      ? `Per dagdeel: ${parts
+          .map((p) => `${p.label} ${p.min}–${p.max}°C (regen ${p.pop}%)`)
+          .join(" • ")}.`
+      : language === "de"
+      ? `Nach Tagesabschnitt: ${parts
+          .map((p) => `${p.label} ${p.min}–${p.max}°C (Regen ${p.pop}%)`)
+          .join(" • ")}.`
+      : `By part of day: ${parts
+          .map((p) => `${p.label} ${p.min}–${p.max}°C (rain ${p.pop}%)`)
+          .join(" • ")}.`,
+    language === "fr"
+      ? `Indice UV max : ${uv}.`
+      : language === "nl"
+      ? `Max UV-index: ${uv}.`
+      : language === "de"
+      ? `Max UV-Index: ${uv}.`
+      : `Max UV index: ${uv}.`,
+  ];
+
+  // “Conseils” (petits chips)
   const bullets = [];
-  if (heavyRainRisk) bullets.push(t.aiBulletUmbrella);
-  if (strongWindRisk) bullets.push(t.aiBulletWind);
-  if (freezingRisk) bullets.push(t.aiBulletFreeze);
+  if (popToday >= 60) bullets.push(language === "fr" ? "Parapluie recommandé" : language === "nl" ? "Paraplu aanbevolen" : language === "de" ? "Regenschirm empfohlen" : "Bring an umbrella");
+  if (windNow >= 35) bullets.push(language === "fr" ? "Vent soutenu" : language === "nl" ? "Flinke wind" : language === "de" ? "Starker Wind" : "Breezy");
+  if (tMin <= 0) bullets.push(language === "fr" ? "Risque de gel" : language === "nl" ? "Kans op vorst" : language === "de" ? "Frost möglich" : "Frost possible");
+  if (uv >= 3) bullets.push(language === "fr" ? "Protection UV" : language === "nl" ? "UV-bescherming" : language === "de" ? "UV-Schutz" : "UV protection");
+  if (!bullets.length) bullets.push(language === "fr" ? "Rien à signaler" : language === "nl" ? "Geen bijzonderheden" : language === "de" ? "Keine Besonderheiten" : "Nothing notable");
 
-  return {
-    title: t.aiLongTitle,
-    headline: `${fmtTemp(current.temperature_2m)} • ${headDesc} • ${headPP}% ${t.aiRainRisk} • ${confLabel}`,
-    paragraphs,
-    bullets,
-  };
+  return { title, headline, paragraphs, bullets };
 }
