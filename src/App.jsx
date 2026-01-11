@@ -18,13 +18,6 @@ const BELGIAN_CITIES = [
 
 const TRANSLATIONS = {
   fr: {
-    postalTitle: "Recherche par code postal",
-    postalPlaceholder: "Ex: 4450",
-    postalHint: "Tape 4 chiffres, puis choisis une localité (village).",
-    postalSearching: "Recherche…",
-    postalNoResults: "Aucun résultat pour ce code postal.",
-    postalError: "Impossible de charger les localités (réessaie).",
-    postalPick: "Choisis une localité :",
     title: "Météo IA Belgique",
     subtitle: "Prévisions intelligentes optimisées pour la Belgique",
     chooseCity: "Choisir une ville :",
@@ -62,13 +55,6 @@ const TRANSLATIONS = {
     updateCta: "Recharger"
   },
   nl: {
-    postalTitle: "Zoeken op postcode",
-    postalPlaceholder: "Bijv.: 4450",
-    postalHint: "Typ 4 cijfers en kies daarna een plaats (dorp).",
-    postalSearching: "Zoeken…",
-    postalNoResults: "Geen resultaat voor deze postcode.",
-    postalError: "Kan plaatsen niet laden (probeer opnieuw).",
-    postalPick: "Kies een plaats:",
     title: "Weer AI België",
     subtitle: "Intelligente voorspellingen geoptimaliseerd voor België",
     chooseCity: "Kies een stad:",
@@ -106,13 +92,6 @@ const TRANSLATIONS = {
     updateCta: "Herladen"
   },
   de: {
-    postalTitle: "Suche nach Postleitzahl",
-    postalPlaceholder: "z.B. 4450",
-    postalHint: "Gib 4 Ziffern ein und wähle dann eine Ortschaft.",
-    postalSearching: "Suche…",
-    postalNoResults: "Keine Ergebnisse für diese Postleitzahl.",
-    postalError: "Ortschaften konnten nicht geladen werden.",
-    postalPick: "Ortschaft wählen:",
     title: "Wetter KI Belgien",
     subtitle: "Intelligente Vorhersagen optimiert für Belgien",
     chooseCity: "Stadt wählen:",
@@ -150,13 +129,6 @@ const TRANSLATIONS = {
     updateCta: "Neu laden"
   },
   en: {
-    postalTitle: "Search by postal code",
-    postalPlaceholder: "e.g. 4450",
-    postalHint: "Type 4 digits, then pick a locality (village).",
-    postalSearching: "Searching…",
-    postalNoResults: "No results for this postal code.",
-    postalError: "Unable to load localities (try again).",
-    postalPick: "Pick a locality:",
     title: "Weather AI Belgium",
     subtitle: "Smart forecasts optimized for Belgium",
     chooseCity: "Choose a city:",
@@ -601,63 +573,6 @@ export default function App() {
               <LocateFixed className="w-4 h-4" />
               {t.useMyLocation}
             </button>
-          </div>
-
-          {/* --- Recherche par code postal --- */}
-          <div className="mb-4">
-            <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>
-              {t.postalTitle}
-            </div>
-
-            <input
-              value={postalCode}
-              onChange={(e) =>
-                setPostalCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
-              }
-              placeholder={t.postalPlaceholder}
-              inputMode="numeric"
-              className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${theme.card} ${theme.text}`}
-            />
-
-            <div className={`text-xs mt-2 ${theme.muted2}`}>{t.postalHint}</div>
-
-            {postalLoading && (
-              <div className="flex items-center gap-2 mt-3 text-sm text-indigo-500 font-semibold">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t.postalSearching}</span>
-              </div>
-            )}
-
-            {!!postalMessage && !postalLoading && (
-              <div className={`mt-3 text-sm ${theme.muted}`}>{postalMessage}</div>
-            )}
-
-            {postalResults.length > 0 && (
-              <div className="mt-3">
-                <div className={`text-sm font-extrabold mb-2 ${theme.text}`}>
-                  {t.postalPick}
-                </div>
-
-                <div
-                  className={`max-h-56 overflow-auto rounded-xl border ${
-                    darkMode ? "border-slate-700" : "border-slate-200"
-                  }`}
-                >
-                  {postalResults.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => selectPostalPlace(p)}
-                      className={`w-full text-left px-3 py-2 transition ${
-                        darkMode ? "hover:bg-slate-800" : "hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className={`font-bold ${theme.text}`}>{p.name}</div>
-                      <div className={`text-xs ${theme.muted2}`}>{p.state}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
