@@ -45,3 +45,50 @@
   from { transform: translate(-2%, -1%) scale(1.02); }
   to   { transform: translate(2%, 1%) scale(1.05); }
 }
+
+/* ---- Premium micro-interactions (safe + léger) ---- */
+.card-anim {
+  transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+  will-change: transform;
+}
+
+.card-anim:hover {
+  transform: translateY(-2px);
+}
+
+.card-shimmer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.card-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: -80px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.18;
+  transform: translateX(-30%) rotate(12deg);
+  background: radial-gradient(closest-side, rgba(217,70,239,0.55), transparent 60%),
+              radial-gradient(closest-side, rgba(99,102,241,0.45), transparent 60%),
+              radial-gradient(closest-side, rgba(14,165,233,0.35), transparent 60%);
+  animation: shimmerMove 12s linear infinite;
+}
+
+.card-shimmer > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes shimmerMove {
+  0%   { transform: translateX(-35%) rotate(12deg); }
+  50%  { transform: translateX(12%) rotate(12deg); }
+  100% { transform: translateX(-35%) rotate(12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-anim { transition: none; }
+  .card-anim:hover { transform: none; }
+  .card-shimmer::before { animation: none; }
+}

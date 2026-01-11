@@ -1,6 +1,8 @@
 import { getT } from "./lang";
 import SevenDayTemps from "./components/SevenDayTemps";
 import SevenDayForecast from "./components/SevenDayForecast";
+import DayParts from "./components/DayParts";
+import HourlyChart from "./components/HourlyChart";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Cloud,
@@ -436,8 +438,8 @@ export default function App() {
     ? {
         page: "bg-[#070612] text-slate-100",
         wrap: "aurora-bg",
-        card: "bg-white/6 border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,.35)] backdrop-blur-xl",
-        cardSoft: "bg-white/4 border border-white/10 backdrop-blur-xl",
+        card: "bg-white/6 border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,.35)] backdrop-blur-xl card-anim card-shimmer",
+        cardSoft: "bg-white/4 border border-white/10 backdrop-blur-xl card-anim card-shimmer",
         text: "text-slate-100",
         muted: "text-slate-300/80",
         muted2: "text-slate-400/70",
@@ -455,8 +457,8 @@ export default function App() {
     : {
         page: "bg-[#FBF8FF] text-slate-900",
         wrap: "aurora-bg",
-        card: "bg-white/70 border border-white/60 shadow-[0_20px_80px_rgba(59,130,246,.10)] backdrop-blur-xl",
-        cardSoft: "bg-white/55 border border-white/60 backdrop-blur-xl",
+        card: "bg-white/70 border border-white/60 shadow-[0_20px_80px_rgba(59,130,246,.10)] backdrop-blur-xl card-anim card-shimmer",
+        cardSoft: "bg-white/55 border border-white/60 backdrop-blur-xl card-anim card-shimmer",
         text: "text-slate-900",
         muted: "text-slate-600",
         muted2: "text-slate-500",
@@ -723,6 +725,15 @@ export default function App() {
               </div>
             </div>
           </div>
+		  
+		  <DayParts
+            hourly={hourly}
+            language={language}
+            t={t}
+            darkMode={darkMode}
+            theme={theme}
+            getWeatherIcon={getWeatherIcon}
+		  />
 
           {/* Carte actuelle */}
           <div className={`rounded-2xl p-4 sm:p-8 mb-6 ${theme.card}`}>
@@ -795,6 +806,14 @@ export default function App() {
           {/* Horaires */}
           <div className={`rounded-2xl p-4 sm:p-8 mb-6 ${theme.card}`}>
             <h3 className={`text-xl sm:text-2xl font-extrabold mb-4 sm:mb-6 ${theme.text}`}>{t.hourlyForecast}</h3>
+			
+			<HourlyChart
+			  hourly={hourly}
+			  language={language}
+			  t={t}
+			  darkMode={darkMode}
+			  theme={theme}
+			/>
 
             <div className="overflow-x-auto">
               <div className="flex gap-3 pb-4">
