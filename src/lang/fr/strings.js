@@ -48,4 +48,5 @@ export default {
   cold: "Froid",
   mild: "Doux",
   hot: "Chaud",
+  forecast7days: "Prévisions 7 jours",
 };

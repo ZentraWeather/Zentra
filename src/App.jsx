@@ -1,5 +1,6 @@
 import { getT } from "./lang";
 import SevenDayTemps from "./components/SevenDayTemps";
+import SevenDayForecast from "./components/SevenDayForecast";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Cloud,
@@ -788,6 +789,16 @@ export default function App() {
           </div>
           <p className={`text-sm mt-4 text-center ${theme.muted2}`}>{t.scrollHint}</p>
         </div>
+		
+		<SevenDayForecast
+		  daily={daily}
+		  language={language}
+		  t={t}
+		  darkMode={darkMode}
+		  theme={theme}
+		  getWeatherIcon={getWeatherIcon}
+		  getWeatherDescription={getWeatherDescription}
+		/>
 
         <div className={`text-center mt-8 text-sm ${theme.muted2}`}>
           <p className="font-semibold">PWA : partage par lien + installable.</p>
