@@ -92,3 +92,56 @@
   .card-anim:hover { transform: none; }
   .card-shimmer::before { animation: none; }
 }
+
+/* --- Premium background "aurora" --- */
+.aurora-bg {
+  position: relative;
+}
+.aurora-bg::before {
+  content: "";
+  position: fixed;
+  inset: -40px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 10% 10%, rgba(168,85,247,0.22), transparent 60%),
+    radial-gradient(1000px 520px at 90% 30%, rgba(59,130,246,0.18), transparent 60%),
+    radial-gradient(900px 520px at 50% 90%, rgba(236,72,153,0.14), transparent 60%);
+  filter: blur(10px);
+  transform: translateZ(0);
+}
+
+/* --- Micro transitions "premium" --- */
+.card-anim {
+  transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease, border-color 220ms ease;
+}
+.card-anim:hover {
+  transform: translateY(-2px);
+}
+
+/* --- Shimmer léger sur les cartes --- */
+.card-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.card-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  transform: rotate(18deg) translateX(-60%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.10) 35%,
+    rgba(255,255,255,0.22) 50%,
+    rgba(255,255,255,0.10) 65%,
+    transparent 100%
+  );
+  animation: shimmerMove 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes shimmerMove {
+  0% { transform: rotate(18deg) translateX(-60%); opacity: .35; }
+  50% { transform: rotate(18deg) translateX(60%); opacity: .22; }
+  100% { transform: rotate(18deg) translateX(-60%); opacity: .35; }
+}

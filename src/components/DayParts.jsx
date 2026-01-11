@@ -1,129 +1,142 @@
 import React, { useMemo } from "react";
 
-function mode(arr) {
-  if (!arr?.length) return null;
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function pickLabel(language, key) {
+  const dict = {
+    morning: { fr: "Matin", nl: "Ochtend", de: "Morgen", en: "Morning" },
+    afternoon: { fr: "Après-midi", nl: "Namiddag", de: "Nachmittag", en: "Afternoon" },
+    evening: { fr: "Soir", nl: "Avond", de: "Abend", en: "Evening" },
+  };
+  return dict[key]?.[language] || dict[key]?.fr || key;
+}
+
+function mostFrequent(arr) {
   const m = new Map();
   for (const v of arr) m.set(v, (m.get(v) || 0) + 1);
-  let best = arr[0], bestC = 0;
-  for (const [k, c] of m.entries()) {
-    if (c > bestC) { best = k; bestC = c; }
+  let best = null;
+  let bestN = -1;
+  for (const [k, n] of m.entries()) {
+    if (n > bestN) { bestN = n; best = k; }
   }
   return best;
 }
 
-function labels(language, t) {
-  const fallback = {
-    fr: { title: "Résumé de la journée", sub: "Matin · Après-midi · Soir", morning: "Matin", afternoon: "Après-midi", evening: "Soir", next: "Prochaines 24h", rain: "Pluie", wind: "Vent" },
-    nl: { title: "Dagoverzicht", sub: "Ochtend · Namiddag · Avond", morning: "Ochtend", afternoon: "Namiddag", evening: "Avond", next: "Volgende 24u", rain: "Regen", wind: "Wind" },
-    de: { title: "Tagesüberblick", sub: "Morgen · Nachmittag · Abend", morning: "Morgen", afternoon: "Nachmittag", evening: "Abend", next: "Nächste 24h", rain: "Regen", wind: "Wind" },
-    en: { title: "Day summary", sub: "Morning · Afternoon · Evening", morning: "Morning", afternoon: "Afternoon", evening: "Evening", next: "Next 24h", rain: "Rain", wind: "Wind" },
-  };
-
-  const f = fallback[language] || fallback.fr;
-  return {
-    title: t?.daypartsTitle || f.title,
-    sub: t?.daypartsSub || f.sub,
-    morning: t?.morning || f.morning,
-    afternoon: t?.afternoon || f.afternoon,
-    evening: t?.evening || f.evening,
-    next: t?.next24h || f.next,
-    rain: t?.rain || f.rain,
-    wind: t?.windLabel || f.wind,
-  };
-}
-
-export default function DayParts({ hourly, language, t, darkMode, theme, getWeatherIcon }) {
-  const L = labels(language, t);
-
+export default function DayParts({ hourly, language = "fr", t, darkMode, theme, getWeatherIcon }) {
   const parts = useMemo(() => {
     const times = (hourly?.time || []).slice(0, 48);
-    const temp = (hourly?.temperature_2m || []).slice(0, 48);
-    const prob = (hourly?.precipitation_probability || []).slice(0, 48);
-    const wind = (hourly?.wind_speed_10m || []).slice(0, 48);
-    const code = (hourly?.weather_code || []).slice(0, 48);
+    const temps = (hourly?.temperature_2m || []).slice(0, 48).map(Number);
+    const pp = (hourly?.precipitation_probability || []).slice(0, 48).map(Number);
+    const pr = (hourly?.precipitation || []).slice(0, 48).map(Number);
+    const wc = (hourly?.weather_code || []).slice(0, 48).map(Number);
 
-    const rows = times.map((ts, i) => {
-      const d = new Date(ts);
-      const h = d.getHours();
+    const rows = times.map((time, i) => {
+      const d = new Date(time);
       return {
-        h,
-        t: Number(temp[i] ?? 0),
-        p: Number(prob[i] ?? 0),
-        w: Number(wind[i] ?? 0),
-        c: Number(code[i] ?? 3),
+        d,
+        hour: d.getHours(),
+        temp: Number.isFinite(temps[i]) ? temps[i] : 0,
+        pp: Number.isFinite(pp[i]) ? pp[i] : 0,
+        pr: Number.isFinite(pr[i]) ? pr[i] : 0,
+        wc: Number.isFinite(wc[i]) ? wc[i] : 3,
       };
     });
 
-    const buckets = [
-      { key: "morning", label: L.morning, from: 6, to: 12 },
-      { key: "afternoon", label: L.afternoon, from: 12, to: 18 },
-      { key: "evening", label: L.evening, from: 18, to: 24 },
+    // parts : 06-12 / 12-18 / 18-24
+    const ranges = [
+      { key: "morning", from: 6, to: 12 },
+      { key: "afternoon", from: 12, to: 18 },
+      { key: "evening", from: 18, to: 24 },
     ];
 
-    return buckets.map((b) => {
-      const r = rows.filter((x) => x.h >= b.from && x.h < b.to);
-      const temps = r.map((x) => x.t);
-      const probs = r.map((x) => x.p);
-      const winds = r.map((x) => x.w);
-      const codes = r.map((x) => x.c);
+    return ranges.map((r) => {
+      const seg = rows.filter((x) => x.hour >= r.from && x.hour < r.to);
+      if (!seg.length) return { ...r, ok: false };
 
-      const avg = temps.length ? temps.reduce((a, v) => a + v, 0) / temps.length : null;
-      const tmin = temps.length ? Math.min(...temps) : null;
-      const tmax = temps.length ? Math.max(...temps) : null;
+      const minT = Math.min(...seg.map((x) => x.temp));
+      const maxT = Math.max(...seg.map((x) => x.temp));
+      const maxPP = Math.max(...seg.map((x) => x.pp));
+      const sumPr = seg.reduce((a, x) => a + x.pr, 0);
+      const iconCode = mostFrequent(seg.map((x) => x.wc)) ?? 3;
 
       return {
-        ...b,
-        tAvg: avg,
-        tMin: tmin,
-        tMax: tmax,
-        pMax: probs.length ? Math.max(...probs) : 0,
-        wMax: winds.length ? Math.max(...winds) : 0,
-        wCode: mode(codes) ?? 3,
+        ...r,
+        ok: true,
+        minT,
+        maxT,
+        maxPP,
+        sumPr,
+        iconCode,
       };
     });
-  }, [hourly, L.morning, L.afternoon, L.evening]);
+  }, [hourly]);
+
+  const cards = parts.filter((p) => p.ok);
+  if (!cards.length) return null;
 
   return (
-    <div className={`rounded-2xl p-4 sm:p-8 mb-6 ${theme.card}`}>
-      <div className="flex items-end justify-between gap-3 mb-4">
-        <div>
-          <div className={`text-xl sm:text-2xl font-extrabold ${theme.text}`}>{L.title}</div>
-          <div className={`text-sm ${theme.muted2}`}>{L.sub}</div>
+    <div className={`rounded-2xl p-4 mb-6 ${theme?.card || ""}`}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className={`text-sm font-extrabold ${theme?.text || ""}`}>
+          {t?.daypartsTitle || (language === "fr" ? "Résumé par moment de la journée" : "Day summary")}
         </div>
-        <span className={`text-xs font-extrabold rounded-full px-3 py-1.5 ${theme.btnGhost}`}>
-          {L.next}
-        </span>
+        <div className={`text-xs font-bold ${theme?.muted2 || ""}`}>
+          {t?.daypartsHint || (language === "fr" ? "Temp min/max + risque pluie" : "Min/Max + rain risk")}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {parts.map((p) => (
-          <div
-            key={p.key}
-            className={`rounded-2xl p-4 border ${darkMode ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50"} transition`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className={`text-sm font-extrabold ${theme.muted2}`}>{p.label}</div>
-                <div className={`text-2xl font-extrabold ${theme.text}`}>
-                  {p.tAvg === null ? "—" : `${Math.round(p.tAvg)}°`}
-                  <span className={`ml-2 text-sm font-bold ${theme.muted2}`}>
-                    {p.tMin === null ? "" : `${Math.round(p.tMin)}° / ${Math.round(p.tMax)}°`}
-                  </span>
+        {cards.map((p) => {
+          const label = t?.[`dayparts_${p.key}`] || pickLabel(language, p.key);
+          const risk = clamp(Math.round(p.maxPP), 0, 100);
+
+          return (
+            <div
+              key={p.key}
+              className={`rounded-2xl p-4 border transition ${darkMode ? "border-white/10 bg-white/4 hover:bg-white/6" : "border-slate-200 bg-white/60 hover:bg-white/80"} backdrop-blur-xl`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className={`text-sm font-extrabold ${theme?.text || ""}`}>{label}</div>
+                  <div className={`mt-1 text-xs ${theme?.muted2 || ""}`}>
+                    {t?.daypartsTemps || (language === "fr" ? "Températures" : "Temps")} :{" "}
+                    <span className="font-extrabold">{Math.round(p.minT)}°</span>{" "}
+                    → <span className="font-extrabold">{Math.round(p.maxT)}°</span>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  {typeof getWeatherIcon === "function" ? getWeatherIcon(p.iconCode, "w-10 h-10") : null}
                 </div>
               </div>
-              <div className="shrink-0">{getWeatherIcon(p.wCode, "w-12 h-12")}</div>
-            </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs font-extrabold">
-              <div className={`${theme.muted2}`}>{L.rain}</div>
-              <div className="text-sky-500">{Math.round(p.pMax)}%</div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className={`text-xs font-extrabold ${darkMode ? "text-sky-300" : "text-sky-600"}`}>
+                  {t?.daypartsRainRisk || (language === "fr" ? "Risque pluie" : "Rain risk")} : {risk}%
+                </div>
+
+                <div className={`text-xs font-bold ${theme?.muted2 || ""}`}>
+                  {t?.daypartsRainSum || (language === "fr" ? "Cumul" : "Total")} :{" "}
+                  <span className="font-extrabold">{p.sumPr.toFixed(1)} mm</span>
+                </div>
+              </div>
+
+              <div className="mt-3 h-2 rounded-full overflow-hidden bg-black/10">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${risk}%`,
+                    background: darkMode
+                      ? "linear-gradient(90deg, rgba(56,189,248,.9), rgba(217,70,239,.9))"
+                      : "linear-gradient(90deg, rgba(59,130,246,.85), rgba(168,85,247,.85))",
+                  }}
+                />
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs font-extrabold">
-              <div className={`${theme.muted2}`}>{L.wind}</div>
-              <div className="text-emerald-500">{Math.round(p.wMax)} km/h</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

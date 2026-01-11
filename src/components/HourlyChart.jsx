@@ -1,182 +1,184 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
-function safeNum(x, fallback = 0) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : fallback;
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
-function labels(language, t) {
-  const fallback = {
-    fr: { title: "Graphique 48h", temp: "Température", rain: "Prob. pluie" },
-    nl: { title: "Grafiek 48u", temp: "Temperatuur", rain: "Regenkans" },
-    de: { title: "48h-Grafik", temp: "Temperatur", rain: "Regenwahrsch." },
-    en: { title: "48h chart", temp: "Temperature", rain: "Rain chance" },
-  };
-  const f = fallback[language] || fallback.fr;
-  return {
-    title: t?.hourlyChartTitle || f.title,
-    temp: t?.temperatureLabel || f.temp,
-    rain: t?.rainChanceLabel || f.rain,
-  };
+function fmtHourLabel(dateObj) {
+  const h = dateObj.getHours();
+  return `${h}h`;
 }
 
-export default function HourlyChart({ hourly, language, t, darkMode, theme }) {
-  const L = labels(language, t);
-  const [hoverIdx, setHoverIdx] = useState(null);
-
+export default function HourlyChart({ hourly, t, darkMode }) {
   const data = useMemo(() => {
-    const n = Math.min(48, (hourly?.time || []).length);
-    const points = Array.from({ length: n }).map((_, i) => {
-      const ts = hourly.time[i];
-      const d = new Date(ts);
+    const times = (hourly?.time || []).slice(0, 48);
+    const temps = (hourly?.temperature_2m || []).slice(0, 48).map((x) => Number(x));
+    const prec = (hourly?.precipitation || []).slice(0, 48).map((x) => Number(x));
+    const pp = (hourly?.precipitation_probability || []).slice(0, 48).map((x) => Number(x));
+
+    const rows = times.map((time, i) => {
+      const d = new Date(time);
       return {
-        i,
-        ts,
-        hour: d.getHours(),
-        temp: safeNum(hourly?.temperature_2m?.[i], 0),
-        prob: safeNum(hourly?.precipitation_probability?.[i], 0),
+        time,
+        d,
+        temp: Number.isFinite(temps[i]) ? temps[i] : 0,
+        precip: Number.isFinite(prec[i]) ? prec[i] : 0,
+        pp: Number.isFinite(pp[i]) ? pp[i] : 0,
       };
     });
 
-    const temps = points.map((p) => p.temp);
-    const tMin = temps.length ? Math.min(...temps) : 0;
-    const tMax = temps.length ? Math.max(...temps) : 1;
+    const minT = Math.min(...rows.map((r) => r.temp));
+    const maxT = Math.max(...rows.map((r) => r.temp));
+    const maxP = Math.max(0.5, ...rows.map((r) => r.precip)); // évite division par 0
 
-    return { points, tMin, tMax };
+    return { rows, minT, maxT, maxP };
   }, [hourly]);
 
-  const W = 760;
-  const H = 220;
-  const pad = 24;
-  const innerW = W - pad * 2;
-  const innerH = H - pad * 2;
+  if (!data.rows.length) return null;
 
-  const scaleX = (i) => pad + (innerW * i) / Math.max(1, data.points.length - 1);
-  const scaleY = (temp) => {
-    const denom = Math.max(1e-6, data.tMax - data.tMin);
-    return pad + ((data.tMax - temp) / denom) * innerH;
+  // Taille SVG (scrollable sur mobile)
+  const W = 980;
+  const H = 170;
+  const PAD_L = 44;
+  const PAD_R = 18;
+  const PAD_T = 20;
+  const PAD_B = 36;
+
+  const innerW = W - PAD_L - PAD_R;
+  const innerH = H - PAD_T - PAD_B;
+
+  const xFor = (i) => PAD_L + (i * innerW) / Math.max(1, data.rows.length - 1);
+
+  // échelle temp
+  const tMin = Math.floor(data.minT - 1);
+  const tMax = Math.ceil(data.maxT + 1);
+  const yTemp = (temp) => {
+    const k = (temp - tMin) / Math.max(1e-6, (tMax - tMin));
+    return PAD_T + (1 - k) * innerH;
   };
 
-  const poly = data.points
-    .map((p) => `${scaleX(p.i).toFixed(2)},${scaleY(p.temp).toFixed(2)}`)
+  // échelle pluie (barres bas)
+  const barBaseY = PAD_T + innerH;
+  const barMaxH = 52;
+  const barH = (p) => (clamp(p / data.maxP, 0, 1) * barMaxH);
+
+  const path = data.rows
+    .map((r, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)} ${yTemp(r.temp).toFixed(2)}`)
     .join(" ");
 
-  const area = `${pad},${H - pad} ${poly} ${pad + innerW},${H - pad}`;
-
-  const hover = hoverIdx == null ? null : data.points[hoverIdx];
+  const gridLines = [0.25, 0.5, 0.75].map((k) => PAD_T + k * innerH);
 
   return (
-    <div className={`rounded-2xl p-4 sm:p-8 mb-6 ${theme.card}`}>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className={`text-xl sm:text-2xl font-extrabold ${theme.text}`}>{L.title}</div>
-        <div className="flex items-center gap-3 text-xs font-extrabold">
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${theme.btnGhost}`}>
-            <span className="h-2 w-2 rounded-full bg-fuchsia-500" />
-            {L.temp}
-          </span>
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${theme.btnGhost}`}>
-            <span className="h-2 w-2 rounded-full bg-sky-500" />
-            {L.rain}
-          </span>
+    <div className={`rounded-2xl border p-4 mb-5 ${darkMode ? "border-white/10 bg-white/4" : "border-slate-200 bg-white/60"} backdrop-blur-xl`}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className={`text-sm font-extrabold ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
+          {t?.hourlyChartTitle || "Graphique 48h"}
+        </div>
+        <div className={`text-xs font-bold ${darkMode ? "text-slate-300/80" : "text-slate-500"}`}>
+          {t?.hourlyChartHint || "Température (ligne) + pluie (barres)"}
         </div>
       </div>
 
-      <div className="relative">
-        {hover && (
-          <div
-            className={`absolute -top-2 right-0 rounded-2xl px-3 py-2 text-xs font-extrabold border ${
-              darkMode ? "bg-black/40 border-white/10 text-white" : "bg-white/80 border-slate-200 text-slate-900"
-            } backdrop-blur-xl`}
-          >
-            <div className="flex gap-2 items-center justify-end">
-              <span className="text-fuchsia-500">{Math.round(hover.temp)}°C</span>
-              <span className={`${theme.muted2}`}>·</span>
-              <span className="text-sky-500">{Math.round(hover.prob)}%</span>
-              <span className={`${theme.muted2}`}>·</span>
-              <span className={`${theme.muted2}`}>{hover.hour}h</span>
-            </div>
-          </div>
-        )}
+      <div className="overflow-x-auto">
+        <svg width={W} height={H} className="block">
+          {/* fond */}
+          <rect x="0" y="0" width={W} height={H} rx="18" ry="18" fill="transparent" />
 
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[220px]">
-          <defs>
-            <linearGradient id="tempArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="rgba(217,70,239,0.30)" />
-              <stop offset="100%" stopColor="rgba(217,70,239,0.02)" />
-            </linearGradient>
-            <linearGradient id="grid" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor={darkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)"} />
-              <stop offset="100%" stopColor={darkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)"} />
-            </linearGradient>
-          </defs>
+          {/* grille */}
+          {gridLines.map((y, idx) => (
+            <line
+              key={idx}
+              x1={PAD_L}
+              x2={W - PAD_R}
+              y1={y}
+              y2={y}
+              stroke={darkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)"}
+              strokeWidth="1"
+            />
+          ))}
 
-          {/* Grid */}
-          {[0, 0.25, 0.5, 0.75, 1].map((k) => {
-            const y = pad + innerH * k;
-            return <line key={k} x1={pad} x2={W - pad} y1={y} y2={y} stroke="url(#grid)" strokeWidth="1" />;
-          })}
-
-          {/* Rain bars (every 2 hours) */}
-          {data.points.map((p) => {
-            if (p.i % 2 !== 0) return null;
-            const x = scaleX(p.i);
-            const barW = innerW / Math.max(1, data.points.length - 1);
-            const h = (clamp(p.prob, 0, 100) / 100) * innerH;
-            const y = H - pad - h;
+          {/* barres pluie */}
+          {data.rows.map((r, i) => {
+            const x = xFor(i);
+            const w = innerW / Math.max(1, data.rows.length - 1);
+            const bw = clamp(w * 0.62, 6, 14);
+            const h = barH(r.precip);
             return (
-              <rect
-                key={`b-${p.i}`}
-                x={x - barW * 0.35}
-                y={y}
-                width={barW * 0.7}
-                height={h}
-                rx="6"
-                fill={darkMode ? "rgba(14,165,233,0.22)" : "rgba(14,165,233,0.18)"}
-              />
+              <g key={r.time}>
+                <rect
+                  x={x - bw / 2}
+                  y={barBaseY - h}
+                  width={bw}
+                  height={h}
+                  rx="3"
+                  fill={darkMode ? "rgba(56,189,248,0.35)" : "rgba(56,189,248,0.35)"}
+                />
+              </g>
             );
           })}
 
-          {/* Temp area + line */}
-          <polygon points={area} fill="url(#tempArea)" />
-          <polyline points={poly} fill="none" stroke="rgba(217,70,239,0.95)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          {/* ligne température */}
+          <path d={path} fill="none" stroke={darkMode ? "rgba(217,70,239,0.95)" : "rgba(124,58,237,0.95)"} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
 
-          {/* Points hitboxes */}
-          {data.points.map((p) => {
-            const cx = scaleX(p.i);
-            const cy = scaleY(p.temp);
-            return (
-              <circle
-                key={`pt-${p.i}`}
-                cx={cx}
-                cy={cy}
-                r="10"
-                fill="transparent"
-                onMouseEnter={() => setHoverIdx(p.i)}
-                onMouseLeave={() => setHoverIdx(null)}
-              />
-            );
-          })}
+          {/* points */}
+          {data.rows.map((r, i) => (
+            <circle
+              key={r.time}
+              cx={xFor(i)}
+              cy={yTemp(r.temp)}
+              r="3.2"
+              fill={darkMode ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.9)"}
+              stroke={darkMode ? "rgba(217,70,239,0.9)" : "rgba(124,58,237,0.9)"}
+              strokeWidth="2"
+            />
+          ))}
 
-          {/* X labels every 6 hours */}
-          {data.points.map((p) => {
-            if (p.i % 6 !== 0) return null;
-            const x = scaleX(p.i);
+          {/* labels Y temp */}
+          <text x={10} y={PAD_T + 6} fontSize="11" fill={darkMode ? "rgba(226,232,240,0.75)" : "rgba(71,85,105,0.85)"} fontWeight="700">
+            {tMax}°
+          </text>
+          <text x={10} y={PAD_T + innerH} fontSize="11" fill={darkMode ? "rgba(226,232,240,0.75)" : "rgba(71,85,105,0.85)"} fontWeight="700">
+            {tMin}°
+          </text>
+
+          {/* labels X toutes les 6h */}
+          {data.rows.map((r, i) => {
+            if (i % 6 !== 0) return null;
+            const x = xFor(i);
+            const label = i === 0 ? (t?.now || "Maintenant") : fmtHourLabel(r.d);
             return (
-              <text key={`x-${p.i}`} x={x} y={H - 6} textAnchor="middle" fontSize="11" fill={darkMode ? "rgba(226,232,240,0.65)" : "rgba(71,85,105,0.75)"}>
-                {p.hour}h
+              <text
+                key={`x-${r.time}`}
+                x={x}
+                y={H - 12}
+                textAnchor="middle"
+                fontSize="11"
+                fill={darkMode ? "rgba(226,232,240,0.75)" : "rgba(71,85,105,0.85)"}
+                fontWeight="800"
+              >
+                {label}
               </text>
             );
           })}
 
-          {/* min/max labels */}
-          <text x={pad} y={14} fontSize="11" fill={darkMode ? "rgba(226,232,240,0.65)" : "rgba(71,85,105,0.75)"}>{Math.round(data.tMax)}°</text>
-          <text x={pad} y={H - 12} fontSize="11" fill={darkMode ? "rgba(226,232,240,0.65)" : "rgba(71,85,105,0.75)"}>{Math.round(data.tMin)}°</text>
+          {/* légende pluie */}
+          <text
+            x={W - 16}
+            y={PAD_T + innerH + 16}
+            textAnchor="end"
+            fontSize="11"
+            fill={darkMode ? "rgba(226,232,240,0.70)" : "rgba(71,85,105,0.75)"}
+            fontWeight="700"
+          >
+            {t?.rainMm || "Pluie (mm)"}
+          </text>
         </svg>
+      </div>
+
+      {/* petite ligne “lecture” */}
+      <div className={`mt-3 text-xs ${darkMode ? "text-slate-300/80" : "text-slate-600"}`}>
+        {t?.hourlyChartNote || "Astuce : sur mobile, fais glisser horizontalement."}
       </div>
     </div>
   );
-}
-
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
 }
