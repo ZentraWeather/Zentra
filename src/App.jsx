@@ -496,38 +496,6 @@ export default function App() {
   const current = weatherData.current;
   const daily = weatherData.daily;
   const hourly = weatherData.hourly;
-    const getDayName = (dateStr, index) => {
-    if (index === 0) return t.today || "Today";
-    if (index === 1) return t.tomorrow || "Tomorrow";
-
-    const d = new Date(dateStr);
-    const dayNames = {
-      fr: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
-      nl: ["zo", "ma", "di", "wo", "do", "vr", "za"],
-      de: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
-      en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    };
-
-    const arr = dayNames[language] || dayNames.fr;
-    return arr[d.getDay()];
-  };
-
-  const tempScale = useMemo(() => {
-    const mins = (daily.temperature_2m_min || []).slice(0, 7).map(Number).filter(Number.isFinite);
-    const maxs = (daily.temperature_2m_max || []).slice(0, 7).map(Number).filter(Number.isFinite);
-
-    const minAll = mins.length ? Math.min(...mins) : 0;
-    const maxAll = maxs.length ? Math.max(...maxs) : 10;
-
-    // petite marge pour que la barre ne colle pas aux bords
-    const pad = 3;
-    const lo = Math.floor(minAll - pad);
-    const hi = Math.ceil(maxAll + pad);
-    const range = Math.max(1, hi - lo);
-
-    return { lo, hi, range };
-  }, [daily.temperature_2m_min, daily.temperature_2m_max]);
-
   const isLive = useRealAPI;
 
   return (
