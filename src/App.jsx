@@ -172,6 +172,33 @@ export default function App() {
     lat: 50.8503,
     lon: 4.3517,
   });
+    // --- Favoris + persistance ---
+  const STORAGE_LAST = "zw:lastLocation:v1";
+  const STORAGE_FAVS = "zw:favorites:v1";
+
+  const [favorites, setFavorites] = useState([]);
+
+  const sameLoc = (a, b) => {
+    if (!a || !b) return false;
+    const la = Number(a.lat), loa = Number(a.lon);
+    const lb = Number(b.lat), lob = Number(b.lon);
+    return Math.abs(la - lb) < 0.0001 && Math.abs(loa - lob) < 0.0001;
+  };
+
+  const isFavorite = useMemo(() => {
+    return favorites.some((f) => sameLoc(f, location));
+  }, [favorites, location]);
+
+  const toggleFavorite = () => {
+    setFavorites((prev) => {
+      const exists = prev.some((f) => sameLoc(f, location));
+      if (exists) return prev.filter((f) => !sameLoc(f, location));
+      // On sauvegarde un “snapshot” propre du lieu
+      const snap = { name: location.name, lat: location.lat, lon: location.lon };
+      return [snap, ...prev].slice(0, 20); // limite à 20 favoris
+    });
+  };
+
   const [useRealAPI, setUseRealAPI] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -406,6 +433,46 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeQuery, language]);
+  
+    // Charger last location + favoris au démarrage
+  useEffect(() => {
+    try {
+      const rawFavs = localStorage.getItem(STORAGE_FAVS);
+      if (rawFavs) setFavorites(JSON.parse(rawFavs));
+
+      const rawLast = localStorage.getItem(STORAGE_LAST);
+      if (rawLast) {
+        const saved = JSON.parse(rawLast);
+        if (saved?.lat && saved?.lon && saved?.name) {
+          setLocation(saved);
+        }
+      }
+    } catch (e) {
+      console.warn("Storage load failed", e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sauver favoris
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_FAVS, JSON.stringify(favorites));
+    } catch (e) {
+      console.warn("Storage save favs failed", e);
+    }
+  }, [favorites]);
+
+  // Sauver le dernier lieu sélectionné
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_LAST,
+        JSON.stringify({ name: location.name, lat: location.lat, lon: location.lon })
+      );
+    } catch (e) {
+      console.warn("Storage save last failed", e);
+    }
+  }, [location]);
 
   const aiAnalysis = useMemo(() => {
     if (!weatherData?.current || !weatherData?.daily) return { emoji: "🌤️", text: "" };
@@ -602,6 +669,10 @@ export default function App() {
                 <LocateFixed className="w-4 h-4" />
                 {t.useMyLocation}
               </button>
+			  <button onClick={toggleFavorite} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-extrabold transition ${theme.btnGhost}`} title={isFavorite ? (t.removeFav || "Retirer des favoris") : (t.addFav || "Ajouter aux favoris")}>
+			    <span className="text-lg">{isFavorite ? "⭐" : "☆"}</span>
+			    <span className="hidden sm:inline">{isFavorite ? (t.favOn || "Favori") : (t.favOff || "Favori")}</span>
+			  </button>
             </div>
 
             {/* Code postal */}
@@ -695,6 +766,26 @@ export default function App() {
                 </div>
               )}
             </div>
+			
+			{favorites.length > 0 && (
+			  <div className="mb-5">
+				<div className={`text-sm font-extrabold mb-2 ${theme.text}`}>{t.favoritesTitle || "Favoris"}</div>
+				<div className="flex flex-wrap gap-2">
+				  {favorites.map((f, idx) => (
+					<button
+					  key={`${f.lat}-${f.lon}-${idx}`}
+					  onClick={() => setLocation(f)}
+					  className={`rounded-full px-3 py-1.5 text-xs font-extrabold transition ${
+						sameLoc(f, location) ? theme.chipOn : theme.chipOff
+					  }`}
+					  title={`${f?.name?.[language] || f?.name?.fr || "Lieu"}`}
+					>
+					  {f?.name?.[language] || f?.name?.fr || "Lieu"}
+					</button>
+				  ))}
+				</div>
+			  </div>
+			)}
 
             {/* Villes rapides */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
