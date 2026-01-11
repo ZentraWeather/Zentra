@@ -3,6 +3,7 @@ import SevenDayTemps from "./components/SevenDayTemps";
 import SevenDayForecast from "./components/SevenDayForecast";
 import DayParts from "./components/DayParts";
 import HourlyChart from "./components/HourlyChart";
+import { buildAiNarrative } from "./utils/aiNarrative";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Cloud,
@@ -482,6 +483,19 @@ export default function App() {
     const current = weatherData.current;
     const daily = weatherData.daily;
     const hourly = weatherData.hourly;
+	const aiNarrative = useMemo(() => {
+    const locationLabel = location?.name?.[language] || location?.name?.fr || "";
+    return buildAiNarrative({
+      t,
+      language,
+      locationLabel,
+      current: weatherData?.current,
+      hourly: weatherData?.hourly,
+      daily: weatherData?.daily,
+      getWeatherDescription,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, language, location, weatherData]);
 
     const tempNow = Math.round(current.temperature_2m ?? 0);
     const feelsNow = Math.round(current.apparent_temperature ?? tempNow);
@@ -919,47 +933,48 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bandeau IA */}
-		  <div className="bg-gradient-to-r from-indigo-500/90 to-fuchsia-600/90 rounded-2xl shadow-xl p-6 mb-6 text-white border border-white/20 backdrop-blur-xl">
-			<div className="flex items-start gap-3">
-			  <div className="text-4xl">{aiAnalysis.emoji}</div>
-			  <div className="flex-1">
-				<h3 className="font-extrabold text-lg mb-1">
-				  {t.aiAnalysisFor} {location?.name?.[language] || location?.name?.fr}
-				</h3>
+{/* Bandeau IA */}
+<div className="bg-gradient-to-r from-indigo-500/90 to-fuchsia-600/90 rounded-2xl shadow-xl p-6 mb-6 text-white border border-white/20 backdrop-blur-xl">
+  <div className="flex items-start gap-3">
+    <div className="text-4xl">{aiBanner.emoji}</div>
 
-				<div className="text-white/95 font-extrabold mb-2">
-				  {aiAnalysis.title}
-				</div>
+    <div className="flex-1">
+      <h3 className="font-extrabold text-lg mb-1">
+        {t.aiAnalysisFor} {location?.name?.[language] || location?.name?.fr}
+      </h3>
 
-				<p className="text-white/80 text-sm mb-3">
-				  {aiAnalysis.confidenceWhy}
-				</p>
+      <div className="text-white/95 font-extrabold mb-2">
+        {aiBanner.title}
+      </div>
 
-				<div className="space-y-1.5">
-				  {(aiAnalysis.lines || []).map((l, i) => (
-					<div key={i} className="text-white/95 leading-relaxed">
-					  • {l}
-					</div>
-				  ))}
-				</div>
+      <p className="text-white/80 text-sm mb-3">
+        {aiBanner.confidenceWhy}
+      </p>
 
-				<div className="mt-4">
-				  <div className="text-white/90 font-extrabold mb-2">{t.aiTips || "Conseils"}</div>
-				  <div className="flex flex-wrap gap-2">
-					{(aiAnalysis.tips || []).map((tip, i) => (
-					  <span
-						key={i}
-						className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-extrabold bg-white/15 border border-white/20"
-					  >
-						{tip}
-					  </span>
-					))}
-				  </div>
-				</div>
-			  </div>
-			</div>
-		  </div>
+      <div className="space-y-1.5">
+        {(aiBanner.lines || []).map((l, i) => (
+          <div key={i} className="text-white/95 leading-relaxed">
+            • {l}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <div className="text-white/90 font-extrabold mb-2">{t.aiTips || "Conseils"}</div>
+        <div className="flex flex-wrap gap-2">
+          {(aiBanner.tips || []).map((tip, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-extrabold bg-white/15 border border-white/20"
+            >
+              {tip}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 		  
 		  <DayParts
             hourly={hourly}
