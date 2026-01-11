@@ -475,30 +475,145 @@ export default function App() {
   }, [location]);
 
   const aiAnalysis = useMemo(() => {
-    if (!weatherData?.current || !weatherData?.daily) return { emoji: "🌤️", text: "" };
+    if (!weatherData?.current || !weatherData?.daily || !weatherData?.hourly) {
+      return { emoji: "🌤️", title: "", lines: [], tips: [], confidenceLabel: "" };
+    }
 
     const current = weatherData.current;
     const daily = weatherData.daily;
+    const hourly = weatherData.hourly;
 
-    const temp = Math.round(current.temperature_2m);
-    const rainProb = Math.round((daily.precipitation_probability_max || [0])[0] ?? 0);
-    const windSpeed = Math.round(current.wind_speed_10m ?? 0);
+    const tempNow = Math.round(current.temperature_2m ?? 0);
+    const feelsNow = Math.round(current.apparent_temperature ?? tempNow);
+    const windNow = Math.round(current.wind_speed_10m ?? 0);
+
+    const rainProbToday = Math.round((daily.precipitation_probability_max || [0])[0] ?? 0);
+    const rainSumToday = Number((daily.precipitation_sum || [0])[0] ?? 0);
+    const uvToday = Math.round((daily.uv_index_max || [0])[0] ?? 0);
+
     const weatherDesc = getWeatherDescription(language, current.weather_code);
 
-    const conf = estimateConfidence({ rainProb, windSpeed });
-    const confLabel = conf === "high" ? t.highConfidence : conf === "medium" ? t.mediumConfidence : t.lowConfidence;
+    // --------- helpers sur 24h ---------
+    const hours = (hourly.time || []).slice(0, 24);
+    const temps = (hourly.temperature_2m || []).slice(0, 24).map((x) => Number(x));
+    const pps = (hourly.precipitation_probability || []).slice(0, 24).map((x) => Number(x));
+    const pr = (hourly.precipitation || []).slice(0, 24).map((x) => Number(x));
+    const winds = (hourly.wind_speed_10m || []).slice(0, 24).map((x) => Number(x));
 
+    const safe = (arr) => arr.filter((x) => Number.isFinite(x));
+    const safeTemps = safe(temps);
+    const safePps = safe(pps);
+    const safePr = safe(pr);
+    const safeWinds = safe(winds);
+
+    const min24 = safeTemps.length ? Math.round(Math.min(...safeTemps)) : tempNow;
+    const max24 = safeTemps.length ? Math.round(Math.max(...safeTemps)) : tempNow;
+    const maxWind24 = safeWinds.length ? Math.round(Math.max(...safeWinds)) : windNow;
+
+    const idxMin = safeTemps.length ? temps.indexOf(Math.min(...safeTemps)) : 0;
+    const idxMax = safeTemps.length ? temps.indexOf(Math.max(...safeTemps)) : 0;
+
+    const fmtHour = (i) => {
+      const iso = hours[i];
+      if (!iso) return "—";
+      const d = new Date(iso);
+      const h = d.getHours();
+      return `${h}h`;
+    };
+
+    // Fenêtres pluie : on détecte une “séquence” d'heures avec probabilité >= 50% (ou précip > 0)
+    const rainThreshold = 50;
+    let rainStart = -1;
+    let rainEnd = -1;
+    let peakPP = 0;
+    let peakIdx = -1;
+
+    for (let i = 0; i < Math.min(hours.length, safePps.length); i++) {
+      const pp = pps[i] ?? 0;
+      const mm = pr[i] ?? 0;
+      const rainy = (pp >= rainThreshold) || (mm > 0.1);
+
+      if (rainy && rainStart === -1) rainStart = i;
+      if (rainy) rainEnd = i;
+
+      if (pp > peakPP) {
+        peakPP = pp;
+        peakIdx = i;
+      }
+    }
+
+    const hasRainWindow = rainStart !== -1 && rainEnd !== -1;
+
+    // Confiance (reprend ton estimateur mais on ajoute une explication)
+    const confKey = estimateConfidence({ rainProb: rainProbToday, windSpeed: maxWind24 });
+    const confidenceLabel =
+      confKey === "high" ? t.highConfidence :
+      confKey === "medium" ? t.mediumConfidence :
+      t.lowConfidence;
+
+    const confidenceWhy =
+      confKey === "high"
+        ? (t.confHighWhy || "Prévision stable : risque de variation faible aujourd’hui.")
+        : confKey === "medium"
+          ? (t.confMedWhy || "Prévision plausible mais météo changeante : surveille l’évolution heure par heure.")
+          : (t.confLowWhy || "Prévision incertaine : conditions très variables ou fronts possibles.");
+
+    // Emoji “principal”
     let emoji = "🌤️";
-    let text = "";
+    if (rainProbToday > 70) emoji = "☔";
+    else if (rainProbToday > 40) emoji = "🌦️";
+    else if (tempNow <= 1) emoji = "❄️";
+    else if (maxWind24 >= 40) emoji = "💨";
+    else if (tempNow >= 22) emoji = "☀️";
 
-    if (rainProb > 70) { emoji = "☔"; text = `${rainProb}% • ${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
-    else if (rainProb > 40) { emoji = "🌦️"; text = `${rainProb}% • ${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
-    else if (temp < 3) { emoji = "❄️"; text = `${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
-    else if (windSpeed > 35) { emoji = "💨"; text = `${windSpeed} km/h • ${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
-    else if (temp > 20) { emoji = "☀️"; text = `${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
-    else { emoji = "🌤️"; text = `${temp}°C • ${weatherDesc.toLowerCase()} • ${confLabel}`; }
+    // Lignes d’analyse (style pro)
+    const lines = [];
 
-    return { emoji, text };
+    // 1) Situation actuelle
+    lines.push(
+      `${t.aiNow || "Actuellement"} : ${tempNow}°C (${t.feelsLike} ${feelsNow}°C), ${weatherDesc.toLowerCase()} — ${t.wind}: ${windNow} km/h.`
+    );
+
+    // 2) Tendance 24h
+    lines.push(
+      `${t.aiTrend24 || "Tendance (24h)"} : ${t.aiMin || "min"} ${min24}°C vers ${fmtHour(idxMin)}, ${t.aiMax || "max"} ${max24}°C vers ${fmtHour(idxMax)}.`
+    );
+
+    // 3) Pluie
+    if (hasRainWindow) {
+      lines.push(
+        `${t.aiRainWindow || "Pluie"} : risque surtout entre ${fmtHour(rainStart)} et ${fmtHour(rainEnd)} (pic ~${Math.round(peakPP)}% vers ${fmtHour(peakIdx)}).`
+      );
+    } else {
+      lines.push(
+        `${t.aiRainWindow || "Pluie"} : risque faible à modéré aujourd’hui (max ${rainProbToday}%).`
+      );
+    }
+
+    // 4) Quantité + UV + vent max
+    const extra = [];
+    if (Number.isFinite(rainSumToday)) extra.push(`${t.aiRainSum || "cumul"} ~${rainSumToday.toFixed(1)} mm`);
+    if (Number.isFinite(uvToday)) extra.push(`${t.uvMax} ${uvToday}`);
+    if (Number.isFinite(maxWind24)) extra.push(`${t.aiWindMax || "vent max"} ${maxWind24} km/h`);
+    if (extra.length) lines.push(`${t.aiExtras || "Indicateurs"} : ${extra.join(" • ")}.`);
+
+    // Conseils pratiques (courts mais utiles)
+    const tips = [];
+
+    if (rainProbToday >= 50 || rainSumToday >= 1) tips.push(t.aiTipUmbrella || "Prends un parapluie (ou une veste imperméable).");
+    if (tempNow <= 1 || min24 <= 0) tips.push(t.aiTipIce || "Attention au gel/verglas possible (trottoirs, routes secondaires).");
+    if (maxWind24 >= 35) tips.push(t.aiTipWind || "Vent notable : prudence à vélo et sur les zones dégagées.");
+    if (feelsNow <= tempNow - 2) tips.push(t.aiTipFeels || "Le ressenti est plus froid : prévois une couche en plus.");
+    if (!tips.length) tips.push(t.aiTipOk || "Conditions plutôt stables : rien de particulier à signaler.");
+
+    return {
+      emoji,
+      title: `${t.aiTitle || "Analyse IA détaillée"} — ${confidenceLabel}`,
+      confidenceLabel,
+      confidenceWhy,
+      lines,
+      tips,
+    };
   }, [weatherData, language, t]);
 
   const theme = darkMode
@@ -805,17 +920,46 @@ export default function App() {
           </div>
 
           {/* Bandeau IA */}
-          <div className="bg-gradient-to-r from-indigo-500/90 to-fuchsia-600/90 rounded-2xl shadow-xl p-6 mb-6 text-white border border-white/20 backdrop-blur-xl">
-            <div className="flex items-start gap-3">
-              <div className="text-4xl">{aiAnalysis.emoji}</div>
-              <div className="flex-1">
-                <h3 className="font-extrabold text-lg mb-2">
-                  {t.aiAnalysisFor} {location?.name?.[language] || location?.name?.fr}
-                </h3>
-                <p className="text-white/95 leading-relaxed">{aiAnalysis.text}</p>
-              </div>
-            </div>
-          </div>
+		  <div className="bg-gradient-to-r from-indigo-500/90 to-fuchsia-600/90 rounded-2xl shadow-xl p-6 mb-6 text-white border border-white/20 backdrop-blur-xl">
+			<div className="flex items-start gap-3">
+			  <div className="text-4xl">{aiAnalysis.emoji}</div>
+			  <div className="flex-1">
+				<h3 className="font-extrabold text-lg mb-1">
+				  {t.aiAnalysisFor} {location?.name?.[language] || location?.name?.fr}
+				</h3>
+
+				<div className="text-white/95 font-extrabold mb-2">
+				  {aiAnalysis.title}
+				</div>
+
+				<p className="text-white/80 text-sm mb-3">
+				  {aiAnalysis.confidenceWhy}
+				</p>
+
+				<div className="space-y-1.5">
+				  {(aiAnalysis.lines || []).map((l, i) => (
+					<div key={i} className="text-white/95 leading-relaxed">
+					  • {l}
+					</div>
+				  ))}
+				</div>
+
+				<div className="mt-4">
+				  <div className="text-white/90 font-extrabold mb-2">{t.aiTips || "Conseils"}</div>
+				  <div className="flex flex-wrap gap-2">
+					{(aiAnalysis.tips || []).map((tip, i) => (
+					  <span
+						key={i}
+						className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-extrabold bg-white/15 border border-white/20"
+					  >
+						{tip}
+					  </span>
+					))}
+				  </div>
+				</div>
+			  </div>
+			</div>
+		  </div>
 		  
 		  <DayParts
             hourly={hourly}
