@@ -83,9 +83,7 @@ export default {
   aiTipWind: "Vent notable : prudence à vélo et sur les zones dégagées.",
   aiTipFeels: "Le ressenti est plus froid : prévois une couche en plus.",
   aiTipOk: "Conditions plutôt stables : rien de particulier à signaler.",
-};
 
-export const frenchIRMKeys = {
   // Analyse IRM
   irmGeneralSituation: "Situation générale",
   irmPrecipitation: "Précipitations",

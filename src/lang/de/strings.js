@@ -83,9 +83,7 @@ export default {
   aiTipWind: "Spürbarer Wind: Vorsicht beim Radfahren und in offenen Bereichen.",
   aiTipFeels: "Gefühlt kälter: plane eine zusätzliche Schicht ein.",
   aiTipOk: "Eher stabile Bedingungen: nichts Besonderes zu beachten.",
-};
 
-export const germanIRMKeys = {
   irmGeneralSituation: "Allgemeine Lage",
   irmPrecipitation: "Niederschlag",
   irmWind: "Wind",

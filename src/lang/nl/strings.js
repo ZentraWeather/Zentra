@@ -83,9 +83,7 @@ export default {
   aiTipWind: "Merkbare wind: wees voorzichtig met de fiets en op open plekken.",
   aiTipFeels: "Het voelt kouder aan: neem een extra laag mee.",
   aiTipOk: "Vrij stabiele omstandigheden: niets bijzonders te melden.",
-};
-
-export const dutchIRMKeys = {
+  
   irmGeneralSituation: "Algemene situatie",
   irmPrecipitation: "Neerslag",
   irmWind: "Wind",

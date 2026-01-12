@@ -83,9 +83,7 @@ export default {
   aiTipWind: "Noticeable wind: be careful cycling and in exposed areas.",
   aiTipFeels: "Feels colder than the air temperature: add an extra layer.",
   aiTipOk: "Mostly stable conditions: nothing special to note.",
-};
 
-export const englishIRMKeys = {
   irmGeneralSituation: "General situation",
   irmPrecipitation: "Precipitation",
   irmWind: "Wind",
