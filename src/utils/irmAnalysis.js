@@ -1,6 +1,6 @@
 // src/utils/irmAnalysis.js
 
-function generateIRMStyleAnalysis(weatherData, location, language, t, getWeatherDescription, estimateConfidence) {
+export function generateIRMStyleAnalysis(weatherData, location, language, t, getWeatherDescription, estimateConfidence) {
   if (!weatherData?.current || !weatherData?.daily || !weatherData?.hourly) {
     return { emoji: "🌤️", title: "", content: "", confidenceLabel: "" };
   }
